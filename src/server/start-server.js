@@ -1,8 +1,10 @@
 import express from "express";
+import helmet from "helmet";
 
 export const startServer = async ({ port }) =>
   new Promise(async (resolve) => {
     const app = express();
+    app.use(helmet());
 
     // parse application/json
     app.use(express.json());
