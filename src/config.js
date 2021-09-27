@@ -15,18 +15,8 @@ const validEnvironmentOptions = {
   production: "production",
 };
 
-const currentEnvironment = process.env.NODE_ENV;
-
-assert(
-  currentEnvironment,
-  'A value for the environment variable "NODE_ENV" must be provided'
-);
-assert(
-  validEnvironmentOptions[currentEnvironment],
-  `The given "NODE_ENV" is not one of the valid options / Given Env: ${currentEnvironment}, valid Options: ${JSON.stringify(
-    Object.values(validEnvironmentOptions)
-  )}`
-);
+const currentEnvironment =
+  process.env.NODE_ENV || validEnvironmentOptions.local;
 
 const isEnvTest = () => currentEnvironment === validEnvironmentOptions.test;
 const isEnvLocal = () => currentEnvironment === validEnvironmentOptions.local;
