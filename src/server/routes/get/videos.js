@@ -8,7 +8,8 @@ export const path = "/videos";
 
 export const getVideos = async (_req, res) => {
   try {
-    res.json(await videosGroupedByChannel());
+    const videos = await videosGroupedByChannel();
+    res.json(videos);
   } catch (error) {
     const message = "Unable to complete request for videos";
     logger.error(`${message} / Error: ${error.message}`);

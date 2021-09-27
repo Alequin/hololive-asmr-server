@@ -5,21 +5,32 @@
   "main": "index.js",
   "scripts": {
     "start": "babel-node ./start",
-    "seed-database": "babel-node ./scripts/seed-database"
+    "seed-database": "babel-node ./scripts/seed-database",
+    "test": "jest --forceExit --runInBand"
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(node-fetch|fetch-blob)/)"
+    ]
   },
   "dependencies": {
     "@babel/core": "^7.15.5",
     "@babel/node": "^7.15.4",
     "@babel/preset-env": "^7.15.6",
+    "@babel/runtime": "^7.15.4",
     "cross-env": "^7.0.3",
     "express": "^4.17.1",
     "helmet": "^4.6.0",
     "lodash": "^4.17.21",
-    "node-fetch": "^3.0.0",
     "sqlite": "^4.0.23",
     "sqlite3": "^5.0.2"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.15.0",
+    "jest": "^27.2.2",
+    "node-fetch": "^3.0.0"
+  }
 }
