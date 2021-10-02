@@ -9,3 +9,7 @@ runScript("seedDatabase", async () => {
   await seedDatabase();
   await database.disconnect();
 });
+
+if (require.main === module) {
+  runScript("setupDatabase", setupDatabaseScript);
+}

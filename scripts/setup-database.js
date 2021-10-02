@@ -5,7 +5,7 @@ import { logger } from "../src/logger";
 import { doesDatabaseExist } from "../src/database/maintenance/does-database-exist";
 import { runScript } from "./run-script";
 
-const setupDatabaseScript = async () => {
+export const setupDatabase = async () => {
   const environment = getEnvironmentVariables();
   environment.isEnvProduction()
     ? await setupProductionDatabase(environment.databaseName)
@@ -38,4 +38,6 @@ const createTablesInGivenDatabase = async (databaseName) => {
   await database.disconnect();
 };
 
-runScript("setupDatabase", setupDatabaseScript);
+if (require.main === module) {
+  runScript("setupDatabase", setupDatabase);
+}

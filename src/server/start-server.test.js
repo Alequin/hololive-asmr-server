@@ -1,26 +1,31 @@
-import { createDatabase } from "../database/create-database.js";
-import { truncateDatabase } from "../database/truncate-database.js";
-import { startServer } from "./start-server.js";
-import fetch from "node-fetch";
 import { isArray } from "lodash";
-import { seedDatabase } from "../database/seed-database.js";
+import fetch from "node-fetch";
+import { setupDatabase } from "../../scripts/setup-database.js";
+import { getEnvironmentVariables } from "../config/config.js";
+import * as database from "../database/database";
+import { seedDatabase } from "../database/maintenance/seed-database.js";
+import { truncateDatabase } from "../database/maintenance/truncate-database.js";
+import { startServer } from "./start-server.js";
 
 describe("start server", () => {
   const testPort = 3002;
   let server = null;
 
   beforeAll(async () => {
-    await createDatabase();
+    await setupDatabase();
   });
 
   beforeEach(async () => {
+    const environment = getEnvironmentVariables();
+    await database.connect(environment.databaseName);
+    await truncateDatabase();
     await seedDatabase();
     server = await startServer({ port: testPort });
   });
 
   afterEach(async () => {
     await server.closeServer();
-    await truncateDatabase();
+    await database.disconnect();
   });
 
   it("Provides an API to request asmr videos", async () => {
