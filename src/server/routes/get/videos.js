@@ -19,7 +19,7 @@ export const getVideos = () => {
 
       if (hasTimedOut) videoCache.add("videos", videosToUse);
 
-      res.json(groupBy(videosToUse, "channel_title"));
+      res.json(videosToUse);
     } catch (error) {
       const message = "Unable to complete request for videos";
       logger.error(`${message} / Error: ${error.message}`);

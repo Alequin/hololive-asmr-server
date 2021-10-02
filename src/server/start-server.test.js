@@ -38,8 +38,13 @@ describe("start server", () => {
 
     const videos = await response.json();
 
-    expect(isArray(videos["Okayu Ch. 猫又おかゆ"])).toBe(true);
-    expect(isArray(videos["Mori Calliope Ch. hololive-EN"])).toBe(true);
+    expect(isArray(videos)).toBe(true);
+    videos.forEach((video) => {
+      expect(typeof video.video_id).toBe("string");
+      expect(typeof video.channel_title).toBe("string");
+      expect(typeof video.video_title).toBe("string");
+      expect(typeof video.thumbnail_url).toBe("string");
+    });
   });
 
   it("Returns cached videos on the second request", async () => {
