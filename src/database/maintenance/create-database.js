@@ -1,10 +1,10 @@
-import * as database from "./database.js";
+import { query } from "../database.js";
 
 export const createDatabase = async () =>
-  database.command(`
+  query(`
     CREATE TABLE IF NOT EXISTS videos (
-        id INTEGER PRIMARY KEY,
-        videoId TEXT NOT NULL,
+        id SERIAL PRIMARY KEY,
+        videoId TEXT UNIQUE NOT NULL,
         channelTitle TEXT NOT NULL,
         videoTitle TEXT NOT NULL,
         thumbnailUrl TEXT NOT NULL 

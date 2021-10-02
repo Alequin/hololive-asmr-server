@@ -6,7 +6,10 @@
   "scripts": {
     "start": "babel-node ./start",
     "seed-database": "babel-node ./scripts/seed-database",
-    "test": "jest --forceExit --runInBand"
+    "test": "jest --forceExit --runInBand",
+    "start-local-database": "docker-compose down && docker-compose up -d",
+    "create-local-database": "cross-env NODE_ENV=local babel-node ./scripts/setup-database.js",
+    "seed-local-database": "cross-env NODE_ENV=local babel-node ./scripts/seed-database.js"
   },
   "jest": {
     "transformIgnorePatterns": [
@@ -16,15 +19,14 @@
   "dependencies": {
     "@babel/core": "^7.15.5",
     "@babel/node": "^7.15.4",
+    "@babel/plugin-transform-runtime": "^7.15.0",
     "@babel/preset-env": "^7.15.6",
     "@babel/runtime": "^7.15.4",
     "cross-env": "^7.0.3",
     "express": "^4.17.1",
     "helmet": "^4.6.0",
     "lodash": "^4.17.21",
-    "sqlite": "^4.0.23",
-    "sqlite3": "^5.0.2",
-    "@babel/plugin-transform-runtime": "^7.15.0"
+    "pg": "^8.7.1"
   },
   "keywords": [],
   "author": "",

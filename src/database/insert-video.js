@@ -9,7 +9,7 @@ export const insertVideo = async ({
   query(
     `
     INSERT INTO videos (videoId, channelTitle, videoTitle, thumbnailUrl)
-        VALUES (?, ?, ?, ?);
+        VALUES ($1, $2, $3, $4);
     `,
     [videoId, channelTitle, videoTitle, thumbnailUrl]
   );

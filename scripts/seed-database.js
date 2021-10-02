@@ -1,10 +1,11 @@
-import { seedDatabase } from "../src/database/seed-database";
+import { getEnvironmentVariables } from "../src/config/config";
+import * as database from "../src/database/database";
+import { seedDatabase } from "../src/database/maintenance/seed-database";
+import { runScript } from "./run-script";
 
-seedDatabase()
-  .then(() => {
-    process.exit();
-  })
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+runScript("seedDatabase", async () => {
+  const environment = getEnvironmentVariables();
+  await database.connect(environment.databaseName);
+  await seedDatabase();
+  await database.disconnect();
+});

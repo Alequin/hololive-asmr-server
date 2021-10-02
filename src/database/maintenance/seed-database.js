@@ -1,4 +1,4 @@
-import { insertVideo } from "./insert-video";
+import { insertVideo } from "../insert-video";
 
 export const seedDatabase = async () => {
   for (const video of seedVideos) {
