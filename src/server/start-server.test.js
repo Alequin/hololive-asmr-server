@@ -6,6 +6,9 @@ import * as database from "../database/database";
 import { seedDatabase } from "../database/maintenance/seed-database.js";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { startServer } from "./start-server.js";
+import * as selectAllVideos from "../database/select-all-videos";
+import { cacheLiftSpan } from "./in-memory-cache.js";
+import { delay } from "../delay.js";
 
 describe("start server", () => {
   const testPort = 3002;
@@ -16,6 +19,8 @@ describe("start server", () => {
   });
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const environment = getEnvironmentVariables();
     await database.connect(environment.databaseName);
     await truncateDatabase();
@@ -35,5 +40,35 @@ describe("start server", () => {
 
     expect(isArray(videos["Okayu Ch. 猫又おかゆ"])).toBe(true);
     expect(isArray(videos["Mori Calliope Ch. hololive-EN"])).toBe(true);
+  });
+
+  it("Returns cached videos on the second request", async () => {
+    const selectAllVideosSpy = jest.spyOn(selectAllVideos, "selectAllVideos");
+
+    await fetch(`http://localhost:${testPort}/videos`);
+    // Calls the database
+    expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
+
+    await fetch(`http://localhost:${testPort}/videos`);
+    // Does not increase the times the database has been called the second time
+    expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("Refreshes the cache after the timeout period has passed", async () => {
+    const selectAllVideosSpy = jest.spyOn(selectAllVideos, "selectAllVideos");
+
+    await fetch(`http://localhost:${testPort}/videos`);
+    // Calls the database
+    expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
+
+    await fetch(`http://localhost:${testPort}/videos`);
+    // Does not increase the times the database has been called the second time
+    expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
+
+    await delay(cacheLiftSpan);
+
+    await fetch(`http://localhost:${testPort}/videos`);
+    // Make another database call after the cache has timed out
+    expect(selectAllVideosSpy).toHaveBeenCalledTimes(2);
   });
 });

@@ -12,7 +12,7 @@ export const startServer = async ({ port }) =>
 
     app.get("/_health", async (_req, res) => res.send("👍"));
 
-    app.get(videos.path, videos.getVideos);
+    app.get(videos.path, videos.getVideos());
 
     const server = app.listen(port, () => {
       let hasClosed = false;
@@ -21,6 +21,7 @@ export const startServer = async ({ port }) =>
         closeServer: async () => {
           if (hasClosed) return;
           hasClosed = true;
+          await new Promise((resolve) => server.close(resolve));
         },
       });
     });
