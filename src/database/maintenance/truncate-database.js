@@ -1,4 +1,4 @@
-import * as database from "./database.js";
+import * as database from "../database.js";
 import { selectAllSqlTableNames } from "./select-all-sql-table-names.js";
 
 export const truncateDatabase = async () => {

@@ -11,7 +11,9 @@
     "create-local-database": "cross-env NODE_ENV=local babel-node ./scripts/setup-database.js",
     "create-production-database": "cross-env NODE_ENV=production babel-node ./scripts/setup-database.js",
     "seed-local-database": "cross-env NODE_ENV=local babel-node ./scripts/seed-database.js",
-    "seed-production-database": "cross-env NODE_ENV=production babel-node ./scripts/seed-database.js"
+    "seed-production-database": "cross-env NODE_ENV=production babel-node ./scripts/seed-database.js",
+    "drop-local-database-tables": "cross-env NODE_ENV=local babel-node ./scripts/drop-database-tables.js",
+    "drop-production-database-tables": "cross-env NODE_ENV=production babel-node ./scripts/drop-database-tables.js"
   },
   "jest": {
     "transformIgnorePatterns": [
