@@ -22,14 +22,10 @@ const setupProductionDatabase = async (databaseName) => {
 const setupLocalDatabase = async (databaseName) => {
   // Create a connection without a target database
   await database.connect();
-
-  if (await doesDatabaseExist(databaseName)) {
-    return logger.info(
-      `Database already exists / databaseName: ${databaseName}`
-    );
+  if (!(await doesDatabaseExist(databaseName))) {
+    logger.info(`Database already exists / databaseName: ${databaseName}`);
+    await database.query(`CREATE DATABASE ${databaseName}`);
   }
-
-  await database.query(`CREATE DATABASE ${databaseName}`);
   // Disconnect the connection without a target database
   await database.disconnect();
 

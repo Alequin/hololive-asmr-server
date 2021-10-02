@@ -8,7 +8,7 @@ export const insertVideo = async ({
 }) =>
   query(
     `
-    INSERT INTO videos (videoId, channelTitle, videoTitle, thumbnailUrl)
+    INSERT INTO videos (video_id, channel_title, video_title, thumbnail_url)
         VALUES ($1, $2, $3, $4);
     `,
     [videoId, channelTitle, videoTitle, thumbnailUrl]

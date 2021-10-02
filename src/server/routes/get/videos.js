@@ -25,5 +25,5 @@ const videosGroupedByChannel = async () => {
     id: undefined, // Users don't need to know the database row id
   }));
 
-  return groupBy(videos, "channelTitle");
+  return groupBy(videos, "channel_title");
 };
