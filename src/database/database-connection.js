@@ -1,6 +1,6 @@
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
-import { getEnvironmentVariables } from "../config.js";
+import { getEnvironmentVariables } from "../config/config.js";
 
 const { isEnvTest } = getEnvironmentVariables();
 

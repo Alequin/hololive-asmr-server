@@ -1,4 +1,5 @@
-import { readJsonFile } from "./read-json-file.js";
+import { readJsonFile } from "../read-json-file.js";
+import { validEnvironmentOptions } from "./valid-environment-options.js";
 
 export const getEnvironmentVariables = () => {
   return {
@@ -6,13 +7,8 @@ export const getEnvironmentVariables = () => {
     isEnvTest,
     isEnvLocal,
     isEnvProduction,
+    port: process.env.PORT || 3000,
   };
-};
-
-const validEnvironmentOptions = {
-  test: "test",
-  local: "local",
-  production: "production",
 };
 
 const currentEnvironment =
