@@ -1,31 +1,45 @@
 import * as database from "../src/database/database";
 import { getEnvironmentVariables } from "../src/config/config";
-import { createDatabase } from "../src/database/maintenance/create-database";
+import { createDatabaseTables } from "../src/database/maintenance/create-database-tables";
 import { logger } from "../src/logger";
 import { doesDatabaseExist } from "../src/database/maintenance/does-database-exist";
 import { runScript } from "./run-script";
 
-runScript("setupDatabase", async () => {
+const setupDatabaseScript = async () => {
   const environment = getEnvironmentVariables();
-  if (!environment.isEnvProduction()) {
-    // Create a connection without a target database
-    await database.connect();
-    await setUpDatabaseLocally(environment.databaseName);
-    // Disconnect the connection without a target database
-    await database.disconnect();
-  }
+  environment.isEnvProduction()
+    ? await setupProductionDatabase(environment.databaseName)
+    : await setupLocalDatabase(environment.databaseName);
+};
 
-  await database.connect(environment.databaseName);
-  await createDatabase();
-  await database.disconnect();
-});
+const setupProductionDatabase = async (databaseName) => {
+  logger.info(
+    "You are creating the production database. Make sure the environment variable 'connectionString' is set of included in secrets.json"
+  );
+  return await createTablesInGivenDatabase(databaseName);
+};
 
-const setUpDatabaseLocally = async (newDatabaseName) => {
-  if (await doesDatabaseExist(newDatabaseName)) {
+const setupLocalDatabase = async (databaseName) => {
+  // Create a connection without a target database
+  await database.connect();
+
+  if (await doesDatabaseExist(databaseName)) {
     return logger.info(
-      `Database already exists / databaseName: ${newDatabaseName}`
+      `Database already exists / databaseName: ${databaseName}`
     );
   }
 
-  await database.query(`CREATE DATABASE ${newDatabaseName}`);
+  await database.query(`CREATE DATABASE ${databaseName}`);
+  // Disconnect the connection without a target database
+  await database.disconnect();
+
+  await createTablesInGivenDatabase(databaseName);
 };
+
+const createTablesInGivenDatabase = async (databaseName) => {
+  await database.connect(databaseName);
+  await createDatabaseTables();
+  await database.disconnect();
+};
+
+runScript("setupDatabase", setupDatabaseScript);

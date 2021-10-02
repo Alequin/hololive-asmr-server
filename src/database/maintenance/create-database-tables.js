@@ -1,6 +1,6 @@
 import { query } from "../database.js";
 
-export const createDatabase = async () =>
+export const createDatabaseTables = async () =>
   query(`
     CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,

@@ -1,4 +1,4 @@
-import { readJsonFile } from "../read-json-file.js";
+import { doesJsonFileExist, readJsonFile } from "../read-json-file.js";
 import { validEnvironmentOptions } from "./valid-environment-options.js";
 import { currentDatabaseName } from "./current-database-name.js";
 
@@ -7,7 +7,6 @@ export const getEnvironmentVariables = () => ({
   databaseName: currentDatabaseName(environmentCheckers),
   ...environmentCheckers,
   ...secretEnvironmentVariables,
-  ...productionOnlySecretEnvironmentVariables,
 });
 
 const currentEnvironment =
@@ -20,16 +19,12 @@ const environmentCheckers = {
     currentEnvironment === validEnvironmentOptions.production,
 };
 
-const secretEnvironmentVariables = {
-  ...(!environmentCheckers.isEnvProduction()
-    ? readJsonFile("./secrets.json")
-    : undefined),
-  youtubeApiKey: process.env.YOUTUBE_API_KEY,
-};
+const localSecrets = doesJsonFileExist("./secrets.json")
+  ? readJsonFile("./secrets.json")
+  : undefined;
 
-const productionOnlySecretEnvironmentVariables =
-  environmentCheckers.isEnvProduction()
-    ? {
-        connectionString: process.env.DATABASE_URL,
-      }
-    : undefined;
+const secretEnvironmentVariables = {
+  youtubeApiKey: process.env.YOUTUBE_API_KEY,
+  connectionString: process.env.DATABASE_URL,
+  ...localSecrets,
+};
