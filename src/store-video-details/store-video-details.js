@@ -1,12 +1,14 @@
+import { isEmpty } from "lodash";
 import { insertVideo } from "../database/insert-video.js";
+import { selectByVideoId } from "../database/select-by-video-id.js";
+import { logger } from "../logger.js";
 import { readJsonFile } from "../read-json-file.js";
 import { searchVideos } from "./search-videos.js";
 
 export const storeVideoDetails = async () => {
-  const allVideos = mockData;
-  // const allVideos = await fetchVideosForAllChannels(
-  //   readJsonFile("./src/store-video-details/channel-ids.json")
-  // );
+  const allVideos = await fetchVideosForAllChannels(
+    readJsonFile("./src/store-video-details/channel-ids.json")
+  );
 
   const asmrVideos = allVideos.filter((video) =>
     /asmr/i.test(video.snippet.title)
@@ -17,9 +19,18 @@ export const storeVideoDetails = async () => {
     channelTitle: video.snippet.channelTitle,
     videoTitle: video.snippet.title,
     thumbnailUrl: video.snippet.thumbnails.medium.url,
+    channelId: video.snippet.channelId,
+    publishedAt: video.snippet.publishedAt,
   }));
 
-  for (const video of formattedVideos) await insertVideo(video);
+  for (const video of formattedVideos) {
+    const shouldSkipInsert = isEmpty(await selectByVideoId(video.videoId));
+    if (shouldSkipInsert) await insertVideo(video);
+    if (!shouldSkipInsert)
+      logger.info(
+        `Skipping video as its id already exists / ${JSON.stringify(video)}`
+      );
+  }
 };
 
 const fetchVideosForAllChannels = async (channelsToSearch) => {
@@ -29,7 +40,6 @@ const fetchVideosForAllChannels = async (channelsToSearch) => {
       ...(await searchVideosRecursively({
         channelId,
         queryTerms: ["asmr"],
-        order: "date ",
       }))
     );
   return videos;

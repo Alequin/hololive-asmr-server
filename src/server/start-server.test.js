@@ -4,6 +4,7 @@ import { setupDatabase } from "../../scripts/setup-database.js";
 import { getEnvironmentVariables } from "../config/config.js";
 import * as database from "../database/database";
 import { seedDatabase } from "../database/maintenance/seed-database.js";
+import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database-tables";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { startServer } from "./start-server.js";
 import * as selectAllVideos from "../database/select-all-videos";
@@ -33,6 +34,13 @@ describe("start server", () => {
     await database.disconnect();
   });
 
+  afterAll(async () => {
+    const environment = getEnvironmentVariables();
+    await database.connect(environment.databaseName);
+    await dropAllDatabaseTables();
+    await database.disconnect();
+  });
+
   it("Provides an API to request asmr videos", async () => {
     const response = await fetch(`http://localhost:${testPort}/videos`);
 
@@ -43,7 +51,8 @@ describe("start server", () => {
       expect(typeof video.video_id).toBe("string");
       expect(typeof video.channel_title).toBe("string");
       expect(typeof video.video_title).toBe("string");
-      expect(typeof video.thumbnail_url).toBe("string");
+      expect(typeof video.channel_id).toBe("string");
+      expect(typeof video.published_at).toBe("string");
     });
   });
 

@@ -1,6 +1,7 @@
 import lodash from "lodash";
 import fetch from "node-fetch";
-import { getEnvironmentVariables } from "../config.js";
+import { getEnvironmentVariables } from "../config/config";
+import { logger } from "../logger";
 
 const { isNil } = lodash;
 const { youtubeApiKey } = getEnvironmentVariables();
@@ -40,7 +41,7 @@ export const searchVideos = async ({
   });
 
   if (searchResults.status >= 400) {
-    console.error(
+    logger.error(
       `There was an issue while searching for videos / Status: ${
         searchResults.status
       }, Search args ${JSON.stringify({
@@ -66,7 +67,7 @@ const removeNilValues = (object) => {
 const getJson = async ({ url, headers }) => {
   const response = await fetch(url, { headers });
 
-  const isErrorStatus = response.status < 400;
+  const isErrorStatus = response.status >= 400;
   return {
     status: response.status,
     data: !isErrorStatus ? await response.json() : null,
