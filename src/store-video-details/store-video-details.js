@@ -1,48 +1,54 @@
-import { isEmpty } from "lodash";
+import { isEmpty, maxBy } from "lodash";
 import { insertVideo } from "../database/insert-video.js";
+import { selectVideosByChannelId } from "../database/select-by-video-channel-id.js";
 import { selectByVideoId } from "../database/select-by-video-id.js";
 import { logger } from "../logger.js";
 import { readJsonFile } from "../read-json-file.js";
 import { searchVideos } from "./search-videos.js";
 
+const EARLIEST_PUBLISH_DATE = new Date(0).toISOString();
+
 export const storeVideoDetails = async () => {
-  const allVideos = await fetchVideosForAllChannels(
-    readJsonFile("./src/store-video-details/channel-ids.json")
-  );
+  const channels = readJsonFile("./src/store-video-details/channel-ids.json");
 
-  const asmrVideos = allVideos.filter((video) =>
-    /asmr/i.test(video.snippet.title)
-  );
-
-  const formattedVideos = asmrVideos.map((video) => ({
-    videoId: video.id.videoId,
-    channelTitle: video.snippet.channelTitle,
-    videoTitle: video.snippet.title,
-    thumbnailUrl: video.snippet.thumbnails.medium.url,
-    channelId: video.snippet.channelId,
-    publishedAt: video.snippet.publishedAt,
-  }));
-
-  for (const video of formattedVideos) {
-    const shouldSkipInsert = isEmpty(await selectByVideoId(video.videoId));
-    if (shouldSkipInsert) await insertVideo(video);
-    if (!shouldSkipInsert)
-      logger.info(
-        `Skipping video as its id already exists / ${JSON.stringify(video)}`
-      );
-  }
-};
-
-const fetchVideosForAllChannels = async (channelsToSearch) => {
-  const videos = [];
-  for (const { channelId } of channelsToSearch)
-    videos.push(
-      ...(await searchVideosRecursively({
-        channelId,
-        queryTerms: ["asmr"],
-      }))
+  for (const channel of channels) {
+    const videosForCurrentChannel = await selectVideosByChannelId(
+      channel.channelId
     );
-  return videos;
+
+    const mostRecentPublishDate = maxBy(
+      videosForCurrentChannel,
+      ({ published_at }) => published_at
+    )?.published_at;
+
+    const allVideos = await searchVideosRecursively({
+      channelId: channel.channelId,
+      queryTerms: ["asmr"],
+      publishedAfter: mostRecentPublishDate || EARLIEST_PUBLISH_DATE,
+    });
+
+    const asmrVideos = allVideos.filter((video) =>
+      /asmr/i.test(video.snippet.title)
+    );
+
+    const formattedVideos = asmrVideos.map((video) => ({
+      videoId: video.id.videoId,
+      channelTitle: video.snippet.channelTitle,
+      videoTitle: video.snippet.title,
+      thumbnailUrl: video.snippet.thumbnails.medium.url,
+      channelId: video.snippet.channelId,
+      publishedAt: video.snippet.publishedAt,
+    }));
+
+    for (const video of formattedVideos) {
+      const isNewVideo = isEmpty(await selectByVideoId(video.videoId));
+      if (isNewVideo) await insertVideo(video);
+      if (!isNewVideo)
+        logger.info(
+          `Skipping video as its id already exists / ${JSON.stringify(video)}`
+        );
+    }
+  }
 };
 
 const searchVideosRecursively = async (searchArgs, previousVideos = []) => {
@@ -2917,5 +2923,3 @@ const mockData = [
     },
   },
 ];
-
-storeVideoDetails();
