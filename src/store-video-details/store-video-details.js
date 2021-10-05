@@ -1,4 +1,4 @@
-import { isEmpty, maxBy } from "lodash";
+import { groupBy, isEmpty, mapValues, maxBy, uniqBy } from "lodash";
 import { insertVideo } from "../database/insert-video.js";
 import { selectVideosByChannelId } from "../database/select-by-video-channel-id.js";
 import { selectByVideoId } from "../database/select-by-video-id.js";
@@ -12,6 +12,7 @@ export const storeVideoDetails = async () => {
   const channels = readJsonFile("./src/store-video-details/channel-ids.json");
 
   for (const channel of channels) {
+    logger.info(channel.channelTitle);
     const videosForCurrentChannel = await selectVideosByChannelId(
       channel.channelId
     );
@@ -21,15 +22,10 @@ export const storeVideoDetails = async () => {
       ({ published_at }) => published_at
     )?.published_at;
 
-    const allVideos = await searchVideosRecursively({
+    const asmrVideos = await searchAsmrVideosRecursively({
       channelId: channel.channelId,
-      queryTerms: ["asmr"],
       publishedAfter: mostRecentPublishDate || EARLIEST_PUBLISH_DATE,
     });
-
-    const asmrVideos = allVideos.filter((video) =>
-      /asmr/i.test(video.snippet.title)
-    );
 
     const formattedVideos = asmrVideos.map((video) => ({
       videoId: video.id.videoId,
@@ -51,14 +47,22 @@ export const storeVideoDetails = async () => {
   }
 };
 
-const searchVideosRecursively = async (searchArgs, previousVideos = []) => {
-  const response = await searchVideos(searchArgs);
+const searchAsmrVideosRecursively = async (searchArgs, previousVideos = []) => {
+  const response = await searchVideos({
+    ...searchArgs,
+    queryTerms: ["asmr"],
+  });
+  console.count("api call count");
 
-  const allVideos = [...previousVideos, ...response.items];
-  if (!response.nextPageToken) return allVideos;
+  const asmrVideos = response.items.filter((video) =>
+    /asmr/i.test(video.snippet.title)
+  );
+
+  const allVideos = [...previousVideos, ...asmrVideos];
+  if (!response.nextPageToken || isEmpty(asmrVideos)) return allVideos;
 
   // Search again with next page token if one is available
-  return searchVideosRecursively(
+  return searchAsmrVideosRecursively(
     { ...searchArgs, pageToken: response.nextPageToken },
     allVideos
   );

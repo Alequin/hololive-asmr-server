@@ -41,7 +41,7 @@ export const searchVideos = async ({
   });
 
   if (searchResults.status >= 400) {
-    logger.error(
+    throw new Error(
       `There was an issue while searching for videos / Status: ${
         searchResults.status
       }, Search args ${JSON.stringify({
