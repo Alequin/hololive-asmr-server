@@ -1,7 +1,6 @@
 import lodash from "lodash";
-import fetch from "node-fetch";
 import { getEnvironmentVariables } from "../config/config";
-import { logger } from "../logger";
+import { getJson } from "../http-requests/get-json";
 
 const { isNil } = lodash;
 const { youtubeApiKey } = getEnvironmentVariables();
@@ -62,15 +61,4 @@ const removeNilValues = (object) => {
     if (isNil(clonedObject[key])) delete clonedObject[key];
 
   return clonedObject;
-};
-
-const getJson = async ({ url, headers }) => {
-  const response = await fetch(url, { headers });
-
-  const isErrorStatus = response.status >= 400;
-  return {
-    status: response.status,
-    data: !isErrorStatus ? await response.json() : null,
-    error: isErrorStatus ? await response.text() : null,
-  };
 };
