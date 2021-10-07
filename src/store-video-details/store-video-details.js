@@ -36,7 +36,10 @@ const searchAsmrVideosRecursively = async (searchArgs, previousVideos = []) => {
   );
 
   const allVideos = [...previousVideos, ...asmrVideos];
-  if (!response.nextPageToken || isEmpty(asmrVideos)) return allVideos;
+  if (!response.nextPageToken || isEmpty(asmrVideos))
+    return allVideos.filter(
+      (video) => !VIDEO_ID_BLOCKLIST.includes(video.id.videoId)
+    );
 
   // Search again with next page token if one is available
   return searchAsmrVideosRecursively(
@@ -44,3 +47,5 @@ const searchAsmrVideosRecursively = async (searchArgs, previousVideos = []) => {
     allVideos
   );
 };
+
+export const VIDEO_ID_BLOCKLIST = ["oRN_5TPDdhI"];

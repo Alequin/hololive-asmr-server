@@ -5,7 +5,7 @@ import * as database from "../database/database";
 import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database-tables";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { selectAllVideos } from "../database/select-all-videos";
-import { storeVideoDetails } from "./store-video-details";
+import { storeVideoDetails, VIDEO_ID_BLOCKLIST } from "./store-video-details";
 import * as searchVideos from "./search-videos";
 import { upsertVideo } from "../database/insert-video";
 
@@ -269,6 +269,45 @@ describe("store-video-details", () => {
       },
     ]);
   });
+
+  it.each(
+    VIDEO_ID_BLOCKLIST,
+    "does not store the video by id %s as it is included in the blockList",
+    async (videoId) => {
+      const channel = {
+        channelTitle: "Tsukumo Sana Ch. hololive-EN",
+        channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
+      };
+
+      mockYoutubeSearchApi(channel.channelId, {
+        responseStatus: 200,
+        response: {
+          items: [
+            {
+              id: {
+                videoId,
+              },
+              snippet: {
+                publishedAt: "2021-06-25T16:53:29Z",
+                channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
+                title: "not a video we want",
+                thumbnails: {
+                  medium: {
+                    url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                  },
+                },
+                channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              },
+            },
+          ],
+        },
+      });
+
+      await storeVideoDetails([channel]);
+
+      expect(await selectAllVideos()).toHaveLength(0);
+    }
+  );
 });
 
 const mockYoutubeSearchApi = (channelId, { response, responseStatus }) =>
