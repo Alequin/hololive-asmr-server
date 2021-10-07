@@ -7,7 +7,9 @@ import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { selectAllVideos } from "../database/select-all-videos";
 import { storeVideoDetails, VIDEO_ID_BLOCKLIST } from "./store-video-details";
 import * as searchVideos from "./search-videos";
-import { upsertVideo } from "../database/insert-video";
+import { upsertVideo } from "../database/upsert-video";
+import { selectLastVideoSearchDate } from "../database/select-last-video-search-date";
+import { upsertLastVideoSearchDate } from "../database/upsert-last-video-search-date";
 
 const { youtubeApiKey, databaseName, isEnvTest } = getEnvironmentVariables();
 
@@ -81,6 +83,46 @@ describe("store-video-details", () => {
         published_at: "2021-06-25T16:53:29Z",
       },
     ]);
+  });
+
+  it("add the last date at which the videos were searched", async () => {
+    expect(await selectLastVideoSearchDate()).toBe(null);
+
+    const channel = {
+      channelTitle: "Tsukumo Sana Ch. hololive-EN",
+      channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
+    };
+
+    mockYoutubeSearchApi(channel.channelId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            id: {
+              videoId: "4oSpgjVH_kI",
+            },
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+            },
+          },
+        ],
+      },
+    });
+
+    const startTime = Date.now();
+    await storeVideoDetails([channel]);
+
+    const time = await selectLastVideoSearchDate();
+    expect(time.getTime()).toBeGreaterThan(startTime);
   });
 
   it("does not store videos which are missing asmr from the title", async () => {

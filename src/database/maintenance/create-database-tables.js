@@ -1,7 +1,7 @@
 import { query } from "../database.js";
 
-export const createDatabaseTables = async () =>
-  query(`
+export const createDatabaseTables = async () => {
+  await query(`
     CREATE TABLE IF NOT EXISTS videos (
         id SERIAL PRIMARY KEY,
         video_id TEXT UNIQUE NOT NULL,
@@ -12,3 +12,11 @@ export const createDatabaseTables = async () =>
         published_at TEXT NOT NULL
     )
 `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS last_time_videos_were_searched (
+        id SERIAL PRIMARY KEY,
+        last_search_date TIMESTAMP NOT NULL
+    )
+`);
+};

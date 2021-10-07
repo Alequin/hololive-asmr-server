@@ -1,4 +1,5 @@
 import { isEmpty } from "lodash";
+import { upsertLastVideoSearchDate } from "../database/upsert-last-video-search-date.js";
 import { upsertVideo } from "../database/upsert-video.js";
 import { logger } from "../logger.js";
 import { searchVideos } from "./search-videos.js";
@@ -22,6 +23,8 @@ export const storeVideoDetails = async (channels) => {
 
     for (const video of formattedVideos) await upsertVideo(video);
   }
+
+  await upsertLastVideoSearchDate(new Date());
 };
 
 const searchAsmrVideosRecursively = async (searchArgs, previousVideos = []) => {
