@@ -1,5 +1,5 @@
 import { isEmpty } from "lodash";
-import { insertVideo } from "../database/insert-video.js";
+import { upsertVideo } from "../database/insert-video.js";
 import { logger } from "../logger.js";
 import { readJsonFile } from "../read-json-file.js";
 import { searchVideos } from "./search-videos.js";
@@ -23,14 +23,7 @@ export const storeVideoDetails = async () => {
       publishedAt: video.snippet.publishedAt,
     }));
 
-    for (const video of formattedVideos) {
-      const isNewVideo = isEmpty(await selectByVideoId(video.videoId));
-      if (isNewVideo) await insertVideo(video);
-      if (!isNewVideo)
-        logger.info(
-          `Skipping video as its id already exists / ${JSON.stringify(video)}`
-        );
-    }
+    for (const video of formattedVideos) await upsertVideo(video);
   }
 };
 

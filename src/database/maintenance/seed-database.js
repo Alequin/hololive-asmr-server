@@ -1,11 +1,7 @@
-import { isEmpty } from "lodash";
-import { insertVideo } from "../insert-video";
-import { selectByVideoId } from "../select-by-video-id";
+import { upsertVideo } from "../insert-video";
 
 export const seedDatabase = async () => {
-  for (const video of mapDataToColumns(seedVideos)) {
-    if (isEmpty(await selectByVideoId(video.videoId))) await insertVideo(video);
-  }
+  for (const video of mapDataToColumns(seedVideos)) await upsertVideo(video);
 };
 
 const mapDataToColumns = (videos) =>
