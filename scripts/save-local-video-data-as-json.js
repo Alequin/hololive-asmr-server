@@ -3,6 +3,7 @@ import * as database from "../src/database/database";
 import { selectAllVideos } from "../src/database/select-all-videos";
 import { runScript } from "./run-script";
 import fs from "fs";
+import { orderBy } from "lodash";
 
 if (require.main === module) {
   runScript("saveLocalVideoDataAsJson", async () => {
@@ -12,7 +13,7 @@ if (require.main === module) {
     const allVideos = await selectAllVideos();
     fs.writeFileSync(
       `seed-data-${Date.now()}.json`,
-      JSON.stringify(allVideos, null, 2)
+      JSON.stringify(orderBy(allVideos, "published_at", "desc"), null, 2)
     );
 
     await database.disconnect();
