@@ -1,30 +1,17 @@
-import { groupBy, isEmpty, mapValues, maxBy, uniqBy } from "lodash";
+import { isEmpty } from "lodash";
 import { insertVideo } from "../database/insert-video.js";
-import { selectVideosByChannelId } from "../database/select-by-video-channel-id.js";
-import { selectByVideoId } from "../database/select-by-video-id.js";
 import { logger } from "../logger.js";
 import { readJsonFile } from "../read-json-file.js";
 import { searchVideos } from "./search-videos.js";
-
-const EARLIEST_PUBLISH_DATE = new Date(0).toISOString();
 
 export const storeVideoDetails = async () => {
   const channels = readJsonFile("./src/store-video-details/channel-ids.json");
 
   for (const channel of channels) {
     logger.info(channel.channelTitle);
-    const videosForCurrentChannel = await selectVideosByChannelId(
-      channel.channelId
-    );
-
-    const mostRecentPublishDate = maxBy(
-      videosForCurrentChannel,
-      ({ published_at }) => published_at
-    )?.published_at;
 
     const asmrVideos = await searchAsmrVideosRecursively({
       channelId: channel.channelId,
-      publishedAfter: mostRecentPublishDate || EARLIEST_PUBLISH_DATE,
     });
 
     const formattedVideos = asmrVideos.map((video) => ({
