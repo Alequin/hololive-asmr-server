@@ -1,4 +1,4 @@
-import { upsertVideo } from "../insert-video";
+import { upsertVideo } from "../upsert-video";
 
 export const seedDatabase = async () => {
   for (const video of mapDataToColumns(seedVideos)) await upsertVideo(video);

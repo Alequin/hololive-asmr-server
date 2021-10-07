@@ -1,5 +1,5 @@
 import { isEmpty } from "lodash";
-import { upsertVideo } from "../database/insert-video.js";
+import { upsertVideo } from "../database/upsert-video.js";
 import { logger } from "../logger.js";
 import { searchVideos } from "./search-videos.js";
 
