@@ -39,6 +39,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "jest": "^27.2.2"
+    "jest": "^27.2.2",
+    "nock": "^13.1.3"
   }
 }

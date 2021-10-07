@@ -8,7 +8,7 @@ if (require.main === module) {
     const environment = getEnvironmentVariables();
     await database.connect(environment.databaseName);
 
-    await storeVideoDetails();
+    await storeVideoDetails(readJsonFile("./src/channel-ids.json"));
 
     await database.disconnect();
   });
