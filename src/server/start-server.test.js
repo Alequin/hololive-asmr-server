@@ -11,6 +11,8 @@ import * as selectAllVideos from "../database/select-all-videos";
 import { cacheLiftSpan } from "./in-memory-cache.js";
 import { delay } from "../delay.js";
 
+const environment = getEnvironmentVariables();
+
 describe("start server", () => {
   const testPort = 3002;
   let server = null;
@@ -22,7 +24,6 @@ describe("start server", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    const environment = getEnvironmentVariables();
     await database.connect(environment.databaseName);
     await truncateDatabase();
     await seedDatabase();
@@ -35,14 +36,15 @@ describe("start server", () => {
   });
 
   afterAll(async () => {
-    const environment = getEnvironmentVariables();
     await database.connect(environment.databaseName);
     await dropAllDatabaseTables();
     await database.disconnect();
   });
 
   it("Provides an API to request asmr videos", async () => {
-    const response = await fetch(`http://localhost:${testPort}/videos`);
+    const response = await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
 
     const videos = await response.json();
 
@@ -59,11 +61,15 @@ describe("start server", () => {
   it("Returns cached videos on the second request", async () => {
     const selectAllVideosSpy = jest.spyOn(selectAllVideos, "selectAllVideos");
 
-    await fetch(`http://localhost:${testPort}/videos`);
+    await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
     // Calls the database
     expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
 
-    await fetch(`http://localhost:${testPort}/videos`);
+    await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
     // Does not increase the times the database has been called the second time
     expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
   });
@@ -71,17 +77,23 @@ describe("start server", () => {
   it("Refreshes the cache after the timeout period has passed", async () => {
     const selectAllVideosSpy = jest.spyOn(selectAllVideos, "selectAllVideos");
 
-    await fetch(`http://localhost:${testPort}/videos`);
+    await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
     // Calls the database
     expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
 
-    await fetch(`http://localhost:${testPort}/videos`);
+    await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
     // Does not increase the times the database has been called the second time
     expect(selectAllVideosSpy).toHaveBeenCalledTimes(1);
 
     await delay(cacheLiftSpan);
 
-    await fetch(`http://localhost:${testPort}/videos`);
+    await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
     // Make another database call after the cache has timed out
     expect(selectAllVideosSpy).toHaveBeenCalledTimes(2);
   });

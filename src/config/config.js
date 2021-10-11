@@ -9,14 +9,12 @@ export const getEnvironmentVariables = () => ({
   ...secretEnvironmentVariables,
 });
 
-const currentEnvironment =
-  process.env.NODE_ENV || validEnvironmentOptions.local;
+const currentEnvironment = process.env.NODE_ENV || validEnvironmentOptions.local;
 
 const environmentCheckers = {
   isEnvTest: () => currentEnvironment === validEnvironmentOptions.test,
   isEnvLocal: () => currentEnvironment === validEnvironmentOptions.local,
-  isEnvProduction: () =>
-    currentEnvironment === validEnvironmentOptions.production,
+  isEnvProduction: () => currentEnvironment === validEnvironmentOptions.production,
 };
 
 const localSecrets = doesJsonFileExist("./secrets.json")
@@ -26,5 +24,6 @@ const localSecrets = doesJsonFileExist("./secrets.json")
 const secretEnvironmentVariables = {
   youtubeApiKey: process.env.YOUTUBE_API_KEY,
   connectionString: process.env.DATABASE_URL,
+  serverAuthToken: process.env.AUTH_TOKEN,
   ...localSecrets,
 };
