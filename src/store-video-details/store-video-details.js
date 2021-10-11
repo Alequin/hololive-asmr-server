@@ -51,4 +51,4 @@ const searchAsmrVideosRecursively = async (searchArgs, previousVideos = []) => {
   );
 };
 
-export const VIDEO_ID_BLOCKLIST = ["oRN_5TPDdhI"];
+export const VIDEO_ID_BLOCKLIST = ["oRN_5TPDdhI", "o6lnSnqn3Uc", "0dj_zliWka4"];
