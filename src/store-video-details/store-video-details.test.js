@@ -88,7 +88,6 @@ describe("store-video-details", () => {
     expect(videos).toHaveLength(1);
     expect(videos).toEqual([
       {
-        id: expect.anything(),
         video_id: "4oSpgjVH_kI",
         channel_id: "UCsUj0dszADCGbF3gNrQEuSQ",
         channel_title: "Tsukumo Sana Ch. hololive-EN",
