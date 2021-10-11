@@ -5,14 +5,14 @@ import * as database from "../database/database";
 import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database-tables";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { selectAllVideos } from "../database/select-all-videos";
-import { storeVideoDetails, VIDEO_ID_BLOCKLIST } from "./store-video-details";
-import * as getVideosInPlaylist from "./get-videos-in-playlist";
+import { selectLastStoreAllVideosDate } from "../database/select-last-store-all-videos-date";
 import { upsertVideo } from "../database/upsert-video";
-import { selectLastVideoSearchDate } from "../database/select-last-video-search-date";
+import * as getVideosInPlaylist from "./get-videos-in-playlist";
+import { storeAllVideoDetails } from "./store-all-video-details";
 
 const { youtubeApiKey, databaseName } = getEnvironmentVariables();
 
-describe("store-video-details", () => {
+describe("store-all-video-details", () => {
   beforeAll(async () => {
     await setupDatabase();
   });
@@ -82,7 +82,7 @@ describe("store-video-details", () => {
       },
     });
 
-    await storeVideoDetails([channel]);
+    await storeAllVideoDetails([channel]);
 
     const videos = await selectAllVideos();
     expect(videos).toHaveLength(1);
@@ -100,7 +100,7 @@ describe("store-video-details", () => {
   });
 
   it("add the last date at which the videos were searched", async () => {
-    expect(await selectLastVideoSearchDate()).toBe(null);
+    expect(await selectLastStoreAllVideosDate()).toBe(null);
 
     mockYoutubeChannelPlaylistId(channel.channelId, {
       responseStatus: 200,
@@ -143,9 +143,9 @@ describe("store-video-details", () => {
     });
 
     const startTime = Date.now();
-    await storeVideoDetails([channel]);
+    await storeAllVideoDetails([channel]);
 
-    const time = await selectLastVideoSearchDate();
+    const time = await selectLastStoreAllVideosDate();
     expect(time.getTime()).toBeGreaterThan(startTime);
   });
 
@@ -194,7 +194,7 @@ describe("store-video-details", () => {
       },
     });
 
-    await storeVideoDetails([channel]);
+    await storeAllVideoDetails([channel]);
 
     expect(await selectAllVideos()).toHaveLength(0);
   });
@@ -251,9 +251,76 @@ describe("store-video-details", () => {
       },
     });
 
-    await storeVideoDetails([channel]);
+    await storeAllVideoDetails([channel]);
 
     expect(getVideosSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("deletes all old videos for the channel when finding new ones", async () => {
+    await upsertVideo({
+      videoId: "123",
+      channelId: channel.channelId,
+      channelTitle: "Tsukumo Sana Ch. hololive-EN",
+      publishedAt: "2021-06-25T16:53:29Z",
+      thumbnailUrl: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+      videoTitle: "an asmr video",
+    });
+
+    mockYoutubeChannelPlaylistId(channel.channelId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            contentDetails: {
+              relatedPlaylists: {
+                uploads: mockPlaylistId,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "4oSpgjVH_kI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await storeAllVideoDetails([channel]);
+
+    const videos = await selectAllVideos();
+    expect(videos).toHaveLength(1);
+    expect(videos).toEqual([
+      {
+        video_id: "4oSpgjVH_kI",
+        channel_id: "UCsUj0dszADCGbF3gNrQEuSQ",
+        channel_title: "Tsukumo Sana Ch. hololive-EN",
+        video_title:
+          "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+        thumbnail_url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+        published_at: "2021-06-25T16:53:29Z",
+      },
+    ]);
   });
 
   it("throws an error if there is an issue fetching the playlist id", async () => {
@@ -262,7 +329,7 @@ describe("store-video-details", () => {
       response: null,
     });
 
-    expect(() => storeVideoDetails([channel])).rejects.toBeDefined();
+    expect(() => storeAllVideoDetails([channel])).rejects.toBeDefined();
   });
 
   it("throws an error if there is an issue fetching the playlist videos", async () => {
@@ -286,7 +353,7 @@ describe("store-video-details", () => {
       response: null,
     });
 
-    expect(() => storeVideoDetails([channel])).rejects.toBeDefined();
+    expect(() => storeAllVideoDetails([channel])).rejects.toBeDefined();
   });
 });
 

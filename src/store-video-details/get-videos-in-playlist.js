@@ -11,13 +11,13 @@ const PLAYLIST_ITEMS_URL = "https://www.googleapis.com/youtube/v3/playlistItems"
  * Based on the search endpoint from the youtube data api
  * - https://developers.google.com/youtube/v3/docs/search/list
  */
-export const getVideosInPlaylist = async ({ playlistId, maxResults, nextPageToken } = {}) => {
+export const getVideosInPlaylist = async ({ playlistId, nextPageToken } = {}) => {
   const playlistItemsParams = new URLSearchParams(
     removeNilValuesFromObject({
       key: youtubeApiKey,
       playlistId,
       part: "snippet",
-      maxResults: Math.min(50, maxResults), // max results cannot be more than 50
+      maxResults: 50,
       pageToken: nextPageToken,
     })
   );

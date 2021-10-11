@@ -1,6 +1,6 @@
 import { query } from "./database.js";
 
-export const upsertLastVideoSearchDate = async (date) =>
+export const upsertLastStoreAllVideosDate = async (date) =>
   query(
     `
   INSERT INTO last_time_videos_were_searched VALUES (1, $1)
