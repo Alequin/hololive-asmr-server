@@ -1,6 +1,8 @@
 import express from "express";
 import helmet from "helmet";
+import { readChannelIds } from "../read-channel-ids.js";
 import * as videos from "./routes/get/videos.js";
+import { watchForNewVideos } from "./watch-for-new-videos";
 
 export const startServer = async ({ port }) =>
   new Promise(async (resolve) => {
@@ -13,6 +15,8 @@ export const startServer = async ({ port }) =>
     app.get("/_health", async (_req, res) => res.send("👍"));
 
     app.get(videos.path, videos.getVideos());
+
+    watchForNewVideos(readChannelIds());
 
     const server = app.listen(port, () => {
       let hasClosed = false;

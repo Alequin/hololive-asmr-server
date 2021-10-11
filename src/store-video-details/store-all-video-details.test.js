@@ -7,6 +7,11 @@ import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { selectAllVideos } from "../database/select-all-videos";
 import { selectLastStoreAllVideosDate } from "../database/select-last-store-all-videos-date";
 import { upsertVideo } from "../database/upsert-video";
+import {
+  mockYoutubeChannelPlaylistId,
+  mockYoutubeVideosInPlaylist,
+  mockYoutubeVideosInPlaylistNextPage,
+} from "../test-utils/nock-mocks";
 import * as getVideosInPlaylist from "./get-videos-in-playlist";
 import { storeAllVideoDetails } from "./store-all-video-details";
 
@@ -356,29 +361,3 @@ describe("store-all-video-details", () => {
     expect(() => storeAllVideoDetails([channel])).rejects.toBeDefined();
   });
 });
-
-const mockYoutubeChannelPlaylistId = (channelId, { response, responseStatus }) =>
-  nock(`https://www.googleapis.com`)
-    .get(`/youtube/v3/channels?key=${youtubeApiKey}&id=${channelId}&part=contentDetails`)
-    .reply(responseStatus, response)
-    .persist();
-
-const mockYoutubeVideosInPlaylist = (playlistId, { response, responseStatus }) =>
-  nock(`https://www.googleapis.com`)
-    .get(
-      `/youtube/v3/playlistItems?key=${youtubeApiKey}&playlistId=${playlistId}&maxResults=50&part=snippet`
-    )
-    .reply(responseStatus, response)
-    .persist();
-
-const mockYoutubeVideosInPlaylistNextPage = (
-  playlistId,
-  nextPageToken,
-  { response, responseStatus }
-) =>
-  nock(`https://www.googleapis.com`)
-    .get(
-      `/youtube/v3/playlistItems?key=${youtubeApiKey}&playlistId=${playlistId}&maxResults=50&part=snippet&pageToken=${nextPageToken}`
-    )
-    .reply(responseStatus, response)
-    .persist();

@@ -15,14 +15,11 @@ const setupDatabaseInterface = () => {
   };
 
   const query = async (query, variables) => {
-    if (!pool)
-      throw new Error("Query Error: Client is not connected to database");
+    if (!pool) throw new Error("Query Error: Client is not connected to database");
 
     try {
       const client = await pool.connect();
-      const rows = await client
-        .query(query, variables)
-        .then(({ rows }) => rows);
+      const rows = await client.query(query, variables).then(({ rows }) => rows);
       client.release();
 
       return rows;
@@ -33,8 +30,7 @@ const setupDatabaseInterface = () => {
   };
 
   const disconnect = async () => {
-    if (!pool)
-      throw new Error("Disconnect Error: Client is not connected to database");
+    if (!pool) throw new Error("Disconnect Error: Client is not connected to database");
 
     try {
       await pool.end();
