@@ -15,7 +15,7 @@ import {
 import * as getVideosInPlaylist from "./get-videos-in-playlist";
 import { storeAllVideoDetails } from "./store-all-video-details";
 
-const { youtubeApiKey, databaseName } = getEnvironmentVariables();
+const { databaseName } = getEnvironmentVariables();
 
 describe("store-all-video-details", () => {
   beforeAll(async () => {
@@ -202,6 +202,56 @@ describe("store-all-video-details", () => {
     await storeAllVideoDetails([channel]);
 
     expect(await selectAllVideos()).toHaveLength(0);
+  });
+
+  it("stores videos included in the allow list even if asmr is missing from the title", async () => {
+    const channel = {
+      channelTitle: "Tsukumo Sana Ch. hololive-EN",
+      channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
+    };
+
+    mockYoutubeChannelPlaylistId(channel.channelId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            contentDetails: {
+              relatedPlaylists: {
+                uploads: mockPlaylistId,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title: "a bad video title",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "_7vOimsaTWI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await storeAllVideoDetails([channel]);
+
+    expect(await selectAllVideos()).toHaveLength(1);
   });
 
   it("calls the api twice if the first request includes a nextPageToken", async () => {
