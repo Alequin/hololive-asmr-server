@@ -8,7 +8,7 @@ const ONE_HOUR = 1000 * 60 * 60;
 
 export const watchForNewVideos = async (channels) => {
   await attemptToFindNewVideos(channels);
-  setInterval(attemptToFindNewVideos, ONE_HOUR);
+  setInterval(() => attemptToFindNewVideos(channels), ONE_HOUR);
 };
 
 export const attemptToFindNewVideos = async (channels) => {
