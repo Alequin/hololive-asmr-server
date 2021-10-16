@@ -1,3 +1,4 @@
+import { selectAllVideosWithChannelDetails } from "../../../database/select-all-videos-with-channel-details.js";
 import { selectAllVideos } from "../../../database/select-all-videos.js";
 import { logger } from "../../../logger.js";
 import { newCache } from "../../in-memory-cache.js";
@@ -10,7 +11,7 @@ export const getVideos = () => {
     try {
       const { value: videosInCache, hasTimedOut } = videoCache.get("videos");
 
-      const videosToUse = hasTimedOut ? await selectAllVideos() : videosInCache;
+      const videosToUse = hasTimedOut ? await selectAllVideosWithChannelDetails() : videosInCache;
 
       if (hasTimedOut) videoCache.add("videos", videosToUse);
 
