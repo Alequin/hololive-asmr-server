@@ -11,7 +11,7 @@ import { mockYoutubeChannelDetails } from "../test-utils/nock-mocks";
 import * as getChannelsDetails from "./get-channels-details";
 import { storeChannelDetails } from "./store-channel-details";
 
-const { youtubeApiKey, databaseName } = getEnvironmentVariables();
+const { databaseName } = getEnvironmentVariables();
 
 describe("store-channel-details", () => {
   beforeAll(async () => {

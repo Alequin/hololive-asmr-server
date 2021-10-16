@@ -4,14 +4,17 @@ import { getEnvironmentVariables } from "../config/config";
 import * as database from "../database/database";
 import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database-tables";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
+import { upsertChannel } from "../database/upsert-channel";
 import { upsertLastStoreAllVideosDate } from "../database/upsert-last-store-all-videos-date";
+import { upsertLastStoreChannelDetails } from "../database/upsert-last-store-channel-details";
 import { upsertLastStoreRecentVideosDate } from "../database/upsert-last-store-recent-videos-date";
+import * as storeChannelDetails from "../store-channel-details/store-channel-details";
 import * as storeAllVideoDetails from "../store-video-details/store-all-video-details";
 import * as storeRecentVideoDetails from "../store-video-details/store-recent-video-details";
 import { mockYoutubeChannelDetails, mockYoutubeVideosInPlaylist } from "../test-utils/nock-mocks";
 import { attemptToFindNewVideos } from "./watch-for-new-videos";
 
-const { youtubeApiKey, databaseName } = getEnvironmentVariables();
+const { databaseName } = getEnvironmentVariables();
 
 describe("attempt-to-find-new-videos", () => {
   beforeAll(async () => {
@@ -20,6 +23,7 @@ describe("attempt-to-find-new-videos", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    jest.spyOn(storeChannelDetails, "storeChannelDetails");
     jest.spyOn(storeAllVideoDetails, "storeAllVideoDetails");
     jest.spyOn(storeRecentVideoDetails, "storeRecentVideoDetails");
 
@@ -44,15 +48,29 @@ describe("attempt-to-find-new-videos", () => {
   };
 
   const mockPlaylistId = "UUO_aKKYxn4tvrqPjcTzZ6EQ";
-  it("stores all videos if the last time it tried was a week ago", async () => {
-    const oneWeekAndOneSecond = 1000 * 60 * 60 * 24 * 7 + 1000;
-    await upsertLastStoreAllVideosDate(new Date(Date.now() - oneWeekAndOneSecond));
+  const mockThumbnail = "thumbnail-url.png";
+  const oneWeekAndOneSecond = 1000 * 60 * 60 * 24 * 7 + 1000;
+  const oneHourAndOneSecond = 1000 * 60 * 60 + 1000;
+
+  it("stores all channels and video if the last time it tried was a week ago", async () => {
+    await upsertLastStoreChannelDetails(new Date(Date.now() - oneWeekAndOneSecond));
+    await upsertLastStoreAllVideosDate(new Date());
+    await upsertLastStoreRecentVideosDate(new Date());
 
     mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [
           {
+            id: channel.channelId,
+            snippet: {
+              title: channel.channelTitle,
+              thumbnails: {
+                medium: {
+                  url: mockThumbnail,
+                },
+              },
+            },
             contentDetails: {
               relatedPlaylists: {
                 uploads: mockPlaylistId,
@@ -90,20 +108,114 @@ describe("attempt-to-find-new-videos", () => {
 
     await attemptToFindNewVideos([channel]);
 
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(1);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
+  });
+
+  it("stores all videos if the last time it tried was a week ago", async () => {
+    await upsertChannel({
+      channelTitle: channel.channelTitle,
+      channelId: channel.channelId,
+      uploadPlaylistId: mockPlaylistId,
+      thumbnailUrl: "mock-thumbnail",
+    });
+
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreAllVideosDate(new Date(Date.now() - oneWeekAndOneSecond));
+    await upsertLastStoreRecentVideosDate(new Date());
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "4oSpgjVH_kI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await attemptToFindNewVideos([channel]);
+
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(0);
     expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
     expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
   });
 
   it("finds recent videos when the last time it tried as over an hour ago", async () => {
-    const oneHourAndOneSecond = 1000 * 60 * 60 + 1000;
-    await upsertLastStoreRecentVideosDate(new Date(Date.now() - oneHourAndOneSecond));
-    await upsertLastStoreAllVideosDate(new Date(Date.now()));
+    await upsertChannel({
+      channelTitle: channel.channelTitle,
+      channelId: channel.channelId,
+      uploadPlaylistId: mockPlaylistId,
+      thumbnailUrl: "mock-thumbnail",
+    });
 
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreAllVideosDate(new Date());
+    await upsertLastStoreRecentVideosDate(new Date(Date.now() - oneHourAndOneSecond));
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "4oSpgjVH_kI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await attemptToFindNewVideos([channel]);
+
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(0);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores all channels and videos if there is no record of fetching any videos", async () => {
     mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [
           {
+            id: channel.channelId,
+            snippet: {
+              title: channel.channelTitle,
+              thumbnails: {
+                medium: {
+                  url: mockThumbnail,
+                },
+              },
+            },
             contentDetails: {
               relatedPlaylists: {
                 uploads: mockPlaylistId,
@@ -141,31 +253,23 @@ describe("attempt-to-find-new-videos", () => {
 
     await attemptToFindNewVideos([channel]);
 
-    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(1);
-    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(1);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
   });
 
   it("stores all videos and does not attempt to find recent videos if both the attempt to store all videos and the attempt to find new videos have timed out", async () => {
-    const oneWeekAndOneSecond = 1000 * 60 * 60 * 24 * 7 + 1000;
+    await upsertChannel({
+      channelTitle: channel.channelTitle,
+      channelId: channel.channelId,
+      uploadPlaylistId: mockPlaylistId,
+      thumbnailUrl: "mock-thumbnail",
+    });
+
+    await upsertLastStoreChannelDetails(new Date());
     await upsertLastStoreAllVideosDate(new Date(Date.now() - oneWeekAndOneSecond));
-    const oneHourAndOneSecond = 1000 * 60 * 60 + 1000;
     await upsertLastStoreRecentVideosDate(new Date(Date.now() - oneHourAndOneSecond));
 
-    mockYoutubeChannelDetails(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
     mockYoutubeVideosInPlaylist(mockPlaylistId, {
       responseStatus: 200,
       response: {
@@ -193,75 +297,22 @@ describe("attempt-to-find-new-videos", () => {
 
     await attemptToFindNewVideos([channel]);
 
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(0);
     expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
     expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
   });
 
-  it("stores all videos if there is no record of fetching any videos", async () => {
-    mockYoutubeChannelDetails(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
+  it("finds recent videos if there is no record of attempting in the past but there is a record of storing all videos, which has not timed out", async () => {
+    await upsertChannel({
+      channelTitle: channel.channelTitle,
+      channelId: channel.channelId,
+      uploadPlaylistId: mockPlaylistId,
+      thumbnailUrl: "mock-thumbnail",
     });
 
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            snippet: {
-              publishedAt: "2021-06-25T16:53:29Z",
-              channelId: channel.channelId,
-              title:
-                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
-              thumbnails: {
-                medium: {
-                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
-                },
-              },
-              channelTitle: "Tsukumo Sana Ch. hololive-EN",
-              resourceId: {
-                videoId: "4oSpgjVH_kI",
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    await attemptToFindNewVideos([channel]);
-
-    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
-    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
-  });
-
-  it("finds recent videos if there is record of attempting in the past but there is a record of storing all videos, which has not timed out", async () => {
+    await upsertLastStoreChannelDetails(new Date());
     await upsertLastStoreAllVideosDate(new Date(Date.now()));
 
-    mockYoutubeChannelDetails(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
     mockYoutubeVideosInPlaylist(mockPlaylistId, {
       responseStatus: 200,
       response: {
@@ -289,7 +340,48 @@ describe("attempt-to-find-new-videos", () => {
 
     await attemptToFindNewVideos([channel]);
 
-    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(1);
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(0);
     expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not throw an error if there is an issue fetching channel details", async () => {
+    mockYoutubeChannelDetails(channel.channelId, {
+      responseStatus: 400,
+      response: null,
+    });
+
+    await attemptToFindNewVideos([channel]).catch(() => {
+      throw "There should be no error";
+    });
+  });
+
+  it("does not throw an error if there is an issue fetching all video details", async () => {
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreAllVideosDate(new Date(Date.now() - oneWeekAndOneSecond));
+
+    mockYoutubeVideosInPlaylist(channel.channelId, {
+      responseStatus: 400,
+      response: null,
+    });
+
+    await attemptToFindNewVideos([channel]).catch(() => {
+      throw "There should be no error";
+    });
+  });
+
+  it("does not throw an error if there is an issue fetching recent video details", async () => {
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreAllVideosDate(new Date());
+    await upsertLastStoreRecentVideosDate(new Date(Date.now() - oneHourAndOneSecond));
+
+    mockYoutubeVideosInPlaylist(channel.channelId, {
+      responseStatus: 400,
+      response: null,
+    });
+
+    await attemptToFindNewVideos([channel]).catch(() => {
+      throw "There should be no error";
+    });
   });
 });

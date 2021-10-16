@@ -1,42 +1,54 @@
+import { selectAllChannels } from "../database/select-all-channels";
 import { selectLastStoreAllVideosDate } from "../database/select-last-store-all-videos-date";
+import { selectLastStoreChannelsDate } from "../database/select-last-store-channels-date";
 import { selectLastStoreRecentVideosDate } from "../database/select-last-store-recent-videos-date";
 import { logger } from "../logger";
+import { readChannelIds } from "../read-channel-ids.js";
+import { storeChannelDetails } from "../store-channel-details/store-channel-details";
 import { storeAllVideoDetails } from "../store-video-details/store-all-video-details";
 import { storeRecentVideoDetails } from "../store-video-details/store-recent-video-details";
 
 const ONE_HOUR = 1000 * 60 * 60;
 
-export const watchForNewVideos = async (channels) => {
-  await attemptToFindNewVideos(channels);
-  setInterval(() => attemptToFindNewVideos(channels), ONE_HOUR);
+export const watchForNewVideos = async (rawChannelDetails) => {
+  await attemptToFindNewVideos(rawChannelDetails);
+  setInterval(() => attemptToFindNewVideos(rawChannelDetails), ONE_HOUR);
 };
 
-export const attemptToFindNewVideos = async (channels) => {
+export const attemptToFindNewVideos = async (rawChannelDetails) => {
   try {
     const nextFetchTime = Date.now();
 
-    const lastFullVideoRequest = await selectLastStoreAllVideosDate();
-    const timeTillNextFullVideoRequest =
-      lastFullVideoRequest && timePlusOneWeek(lastFullVideoRequest.getTime()) - nextFetchTime;
-
-    const lastRecentVideoRequest = await selectLastStoreRecentVideosDate();
-    const timeTillNextRecentVideoRequest =
-      lastRecentVideoRequest && timePlusOneHour(lastRecentVideoRequest.getTime()) - nextFetchTime;
-
-    const shouldStoreAllVideos = !timeTillNextFullVideoRequest || timeTillNextFullVideoRequest < 0;
-    if (shouldStoreAllVideos) {
-      await storeAllVideoDetails(channels);
-    }
-
-    const shouldStoreRecentVideos =
-      (!timeTillNextRecentVideoRequest || timeTillNextRecentVideoRequest < 0) &&
-      !shouldStoreAllVideos;
-    if (shouldStoreRecentVideos) {
-      await storeRecentVideoDetails(channels);
-    }
+    if (await fetchAllDetailsIfRequired(rawChannelDetails, nextFetchTime)) return;
+    if (await fetchAllVideoDetailsIfRequired(nextFetchTime)) return;
+    await fetchRecentVideoDetailsIfRequired(nextFetchTime);
   } catch (error) {
+    // Do not throw. Let the system try again on the next loop
     logger.error(error);
   }
+};
+
+const fetchAllDetailsIfRequired = async (rawChannelDetails, nextFetchTime) => {
+  const lastFullChannelRequest = await selectLastStoreChannelsDate();
+  const timeTillNextFullChannelRequest =
+    lastFullChannelRequest && timePlusOneWeek(lastFullChannelRequest.getTime()) - nextFetchTime;
+
+  if (!hasTimeRunOut(timeTillNextFullChannelRequest)) return false;
+
+  await storeChannelDetails(rawChannelDetails);
+  await storeAllVideoDetails(await selectAllChannels());
+  return true;
+};
+
+const fetchAllVideoDetailsIfRequired = async (nextFetchTime) => {
+  const lastFullVideoRequest = await selectLastStoreAllVideosDate();
+  const timeTillNextFullVideoRequest =
+    lastFullVideoRequest && timePlusOneWeek(lastFullVideoRequest.getTime()) - nextFetchTime;
+
+  if (!hasTimeRunOut(timeTillNextFullVideoRequest)) return false;
+
+  await storeAllVideoDetails(await selectAllChannels());
+  return true;
 };
 
 const timePlusOneWeek = (time) => {
@@ -44,7 +56,20 @@ const timePlusOneWeek = (time) => {
   return time + oneWeek;
 };
 
+const fetchRecentVideoDetailsIfRequired = async (nextFetchTime) => {
+  const lastRecentVideoRequest = await selectLastStoreRecentVideosDate();
+  const timeTillNextRecentVideoRequest =
+    lastRecentVideoRequest && timePlusOneHour(lastRecentVideoRequest.getTime()) - nextFetchTime;
+
+  if (!hasTimeRunOut(timeTillNextRecentVideoRequest)) return false;
+
+  await storeRecentVideoDetails(await selectAllChannels());
+  return true;
+};
+
 const timePlusOneHour = (time) => {
   const oneHour = 1000 * 60 * 60;
   return time + oneHour;
 };
+
+const hasTimeRunOut = (time) => !time || time <= 0;

@@ -28,6 +28,7 @@ export const getChannelsDetails = async (channelIds) => {
   const channelsDetails = await getJson({
     url: `${CHANNEL_URL}?${channelsDetailsParams.toString()}`,
   });
+
   if (channelsDetails.status >= 400) {
     throw new Error(
       `There was an issue while fetching details for a channel / Error: ${channelsDetails.error}, Status: ${channelsDetails.status}, Search args ${channelIdsCSV}`
