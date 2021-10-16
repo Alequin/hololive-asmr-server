@@ -6,17 +6,21 @@ import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import { selectAllVideos } from "../database/select-all-videos";
 import { selectLastStoreRecentVideosDate } from "../database/select-last-store-recent-videos-date";
+import { upsertChannel } from "../database/upsert-channel";
 import { upsertVideo } from "../database/upsert-video";
-import {
-  mockYoutubeChannelPlaylistId,
-  mockYoutubeVideosInPlaylist,
-} from "../test-utils/nock-mocks";
+import { mockYoutubeChannelDetails, mockYoutubeVideosInPlaylist } from "../test-utils/nock-mocks";
 import * as getVideosInPlaylist from "./get-videos-in-playlist";
 import { storeRecentVideoDetails } from "./store-recent-video-details";
 
-const { youtubeApiKey, databaseName } = getEnvironmentVariables();
+const { databaseName } = getEnvironmentVariables();
 
 describe("store-recent-video-details", () => {
+  const channel = {
+    channel_title: "Tsukumo Sana Ch. hololive-EN",
+    channel_id: "UCsUj0dszADCGbF3gNrQEuSQ",
+    upload_playlist_id: "UUO_aKKYxn4tvrqPjcTzZ6EQ",
+  };
+
   beforeAll(async () => {
     await setupDatabase();
   });
@@ -26,6 +30,13 @@ describe("store-recent-video-details", () => {
 
     await database.connect(databaseName);
     await truncateDatabase();
+    // upsert channel each time to satisfy the foreign key
+    await upsertChannel({
+      channelTitle: channel.channel_title,
+      channelId: channel.channel_id,
+      uploadPlaylistId: channel.upload_playlist_id,
+      thumbnailUrl: "mock-thumbnail",
+    });
   });
 
   afterEach(async () => {
@@ -39,36 +50,15 @@ describe("store-recent-video-details", () => {
     await database.disconnect();
   });
 
-  const channel = {
-    channelTitle: "Tsukumo Sana Ch. hololive-EN",
-    channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
-  };
-  const mockPlaylistId = "UUO_aKKYxn4tvrqPjcTzZ6EQ";
-
   it("makes api calls for the requested youtube channels and stores the returned asmr videos", async () => {
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
         items: [
           {
             snippet: {
               publishedAt: "2021-06-25T16:53:29Z",
-              channelId: channel.channelId,
+              channelId: channel.channel_id,
               title:
                 "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
               thumbnails: {
@@ -94,7 +84,6 @@ describe("store-recent-video-details", () => {
       {
         video_id: "4oSpgjVH_kI",
         channel_id: "UCsUj0dszADCGbF3gNrQEuSQ",
-        channel_title: "Tsukumo Sana Ch. hololive-EN",
         video_title:
           "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
         thumbnail_url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
@@ -103,32 +92,17 @@ describe("store-recent-video-details", () => {
     ]);
   });
 
-  it("add the last date at which the videos were searched", async () => {
+  it("records the last date at which the videos were searched", async () => {
     expect(await selectLastStoreRecentVideosDate()).toBe(null);
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
         items: [
           {
             snippet: {
               publishedAt: "2021-06-25T16:53:29Z",
-              channelId: channel.channelId,
+              channelId: channel.channel_id,
               title:
                 "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
               thumbnails: {
@@ -146,42 +120,26 @@ describe("store-recent-video-details", () => {
       },
     });
 
-    const startTime = Date.now();
     await storeRecentVideoDetails([channel]);
 
-    const time = await selectLastStoreRecentVideosDate();
-    expect(time.getTime()).toBeGreaterThan(startTime);
+    const currentTime = Date.now();
+    const tenSeconds = 1000 * 10;
+    const runTime = (await selectLastStoreRecentVideosDate()).getTime();
+
+    // Confirm time is accurate to within 10 seconds
+    expect(runTime).toBeGreaterThan(currentTime - tenSeconds);
+    expect(runTime).toBeLessThan(currentTime + tenSeconds);
   });
 
   it("does not store videos which are missing asmr from the title", async () => {
-    const channel = {
-      channelTitle: "Tsukumo Sana Ch. hololive-EN",
-      channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
-    };
-
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
         items: [
           {
             snippet: {
               publishedAt: "2021-06-25T16:53:29Z",
-              channelId: channel.channelId,
+              channelId: channel.channel_id,
               title: "a bad video title",
               thumbnails: {
                 medium: {
@@ -204,34 +162,14 @@ describe("store-recent-video-details", () => {
   });
 
   it("stores videos included in the allow list even if asmr is missing from the title", async () => {
-    const channel = {
-      channelTitle: "Tsukumo Sana Ch. hololive-EN",
-      channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
-    };
-
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
         items: [
           {
             snippet: {
               publishedAt: "2021-06-25T16:53:29Z",
-              channelId: channel.channelId,
+              channelId: channel.channel_id,
               title: "a bad video title",
               thumbnails: {
                 medium: {
@@ -260,7 +198,7 @@ describe("store-recent-video-details", () => {
       {
         snippet: {
           publishedAt: "2021-06-25T16:53:29Z",
-          channelId: channel.channelId,
+          channelId: channel.channel_id,
           title: "a bad video title",
           thumbnails: {
             medium: {
@@ -275,22 +213,7 @@ describe("store-recent-video-details", () => {
       },
     ];
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
         nextPageToken: "nextPageToken",
@@ -306,36 +229,21 @@ describe("store-recent-video-details", () => {
   it("does not delete all old videos for the channel when finding new ones", async () => {
     await upsertVideo({
       videoId: "123",
-      channelId: channel.channelId,
+      channelId: channel.channel_id,
       channelTitle: "Tsukumo Sana Ch. hololive-EN",
       publishedAt: "2021-06-25T16:53:29Z",
       thumbnailUrl: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
       videoTitle: "an asmr video",
     });
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
-
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
         items: [
           {
             snippet: {
               publishedAt: "2021-06-25T16:53:29Z",
-              channelId: channel.channelId,
+              channelId: channel.channel_id,
               title:
                 "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
               thumbnails: {
@@ -360,8 +268,7 @@ describe("store-recent-video-details", () => {
     expect(videos).toEqual([
       {
         video_id: "123",
-        channel_id: channel.channelId,
-        channel_title: "Tsukumo Sana Ch. hololive-EN",
+        channel_id: channel.channel_id,
         published_at: "2021-06-25T16:53:29Z",
         thumbnail_url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
         video_title: "an asmr video",
@@ -369,7 +276,6 @@ describe("store-recent-video-details", () => {
       {
         video_id: "4oSpgjVH_kI",
         channel_id: "UCsUj0dszADCGbF3gNrQEuSQ",
-        channel_title: "Tsukumo Sana Ch. hololive-EN",
         video_title:
           "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
         thumbnail_url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
@@ -378,24 +284,15 @@ describe("store-recent-video-details", () => {
     ]);
   });
 
-  it("throws an error if there is an issue fetching the playlist id", async () => {
-    mockYoutubeChannelPlaylistId(channel.channelId, {
-      responseStatus: 400,
-      response: null,
-    });
-
-    expect(() => storeRecentVideoDetails([channel])).rejects.toBeDefined();
-  });
-
   it("throws an error if there is an issue fetching the playlist videos", async () => {
-    mockYoutubeChannelPlaylistId(channel.channelId, {
+    mockYoutubeChannelDetails(channel.channel_id, {
       responseStatus: 200,
       response: {
         items: [
           {
             contentDetails: {
               relatedPlaylists: {
-                uploads: mockPlaylistId,
+                uploads: channel.upload_playlist_id,
               },
             },
           },
@@ -403,7 +300,7 @@ describe("store-recent-video-details", () => {
       },
     });
 
-    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+    mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 400,
       response: null,
     });

@@ -1,11 +1,5 @@
-import { query } from "./database.js";
+import { SEARCH_RECENT_VIDEOS } from "../config/search-types.js";
+import { upsertLastSearchDate } from "./upsert-last-search-date.js";
 
 export const upsertLastStoreRecentVideosDate = async (date) =>
-  query(
-    `
-  INSERT INTO last_time_videos_were_searched VALUES (2, $1)
-  ON CONFLICT (id) DO 
-    UPDATE SET last_search_date = $1;
-`,
-    [date]
-  );
+  upsertLastSearchDate(SEARCH_RECENT_VIDEOS, date);

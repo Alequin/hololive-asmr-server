@@ -1,6 +1,4 @@
-import { query } from "./database.js";
+import { SEARCH_ALL_VIDEOS } from "../config/search-types.js";
+import { selectLastStoreDate } from "./select-last-store-date.js";
 
-export const selectLastStoreAllVideosDate = async () =>
-  query("SELECT last_search_date FROM last_time_videos_were_searched WHERE id=1;").then(
-    (rows) => rows?.[0]?.last_search_date || null
-  );
+export const selectLastStoreAllVideosDate = async () => selectLastStoreDate(SEARCH_ALL_VIDEOS);

@@ -14,6 +14,7 @@
     "seed-production-database": "cross-env NODE_ENV=production babel-node ./scripts/seed-database.js",
     "drop-local-database-tables": "cross-env NODE_ENV=local babel-node ./scripts/drop-database-tables.js",
     "drop-production-database-tables": "cross-env NODE_ENV=production babel-node ./scripts/drop-database-tables.js",
+    "request-channel-data-local": "cross-env NODE_ENV=local babel-node ./scripts/request-channel-data.js",
     "request-video-data-local": "cross-env NODE_ENV=local babel-node ./scripts/request-video-data.js",
     "save-local-video-data-as-json": "cross-env NODE_ENV=local babel-node ./scripts/save-local-video-data-as-json.js"
   },

@@ -8,10 +8,7 @@ import { upsertLastStoreAllVideosDate } from "../database/upsert-last-store-all-
 import { upsertLastStoreRecentVideosDate } from "../database/upsert-last-store-recent-videos-date";
 import * as storeAllVideoDetails from "../store-video-details/store-all-video-details";
 import * as storeRecentVideoDetails from "../store-video-details/store-recent-video-details";
-import {
-  mockYoutubeChannelPlaylistId,
-  mockYoutubeVideosInPlaylist,
-} from "../test-utils/nock-mocks";
+import { mockYoutubeChannelDetails, mockYoutubeVideosInPlaylist } from "../test-utils/nock-mocks";
 import { attemptToFindNewVideos } from "./watch-for-new-videos";
 
 const { youtubeApiKey, databaseName } = getEnvironmentVariables();
@@ -51,7 +48,7 @@ describe("attempt-to-find-new-videos", () => {
     const oneWeekAndOneSecond = 1000 * 60 * 60 * 24 * 7 + 1000;
     await upsertLastStoreAllVideosDate(new Date(Date.now() - oneWeekAndOneSecond));
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
+    mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [
@@ -102,7 +99,7 @@ describe("attempt-to-find-new-videos", () => {
     await upsertLastStoreRecentVideosDate(new Date(Date.now() - oneHourAndOneSecond));
     await upsertLastStoreAllVideosDate(new Date(Date.now()));
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
+    mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [
@@ -154,7 +151,7 @@ describe("attempt-to-find-new-videos", () => {
     const oneHourAndOneSecond = 1000 * 60 * 60 + 1000;
     await upsertLastStoreRecentVideosDate(new Date(Date.now() - oneHourAndOneSecond));
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
+    mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [
@@ -201,7 +198,7 @@ describe("attempt-to-find-new-videos", () => {
   });
 
   it("stores all videos if there is no record of fetching any videos", async () => {
-    mockYoutubeChannelPlaylistId(channel.channelId, {
+    mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [
@@ -250,7 +247,7 @@ describe("attempt-to-find-new-videos", () => {
   it("finds recent videos if there is record of attempting in the past but there is a record of storing all videos, which has not timed out", async () => {
     await upsertLastStoreAllVideosDate(new Date(Date.now()));
 
-    mockYoutubeChannelPlaylistId(channel.channelId, {
+    mockYoutubeChannelDetails(channel.channelId, {
       responseStatus: 200,
       response: {
         items: [

@@ -1,17 +1,14 @@
 import { upsertLastStoreRecentVideosDate } from "../database/upsert-last-store-recent-videos-date.js";
 import { upsertVideo } from "../database/upsert-video.js";
 import { logger } from "../logger.js";
-import { getChannelAsmrVideos } from "./get-channel-asmr-videos.js";
-import { getChannelUploadPlaylistId } from "./get-channel-upload-playlist-id.js";
+import { getAsmrVideosInPlaylist } from "./get-asmr-videos-in-playlist.js";
 import { videoApiResponseToDbColumns } from "./video-api-response-to-db-columns.js";
 
 export const storeRecentVideoDetails = async (channels) => {
   for (const channel of channels) {
-    logger.info(channel.channelTitle);
+    logger.info(channel.channel_title);
 
-    const { videos } = await getChannelAsmrVideos(
-      await getChannelUploadPlaylistId(channel.channelId)
-    );
+    const { videos } = await getAsmrVideosInPlaylist(channel.upload_playlist_id);
     const videosToInsert = videoApiResponseToDbColumns(videos);
 
     logger.info(`Found ${videosToInsert.length} videos`);

@@ -2,21 +2,20 @@ import { deleteVideosByChannelId } from "../database/delete-videos-by-channel-id
 import { upsertLastStoreAllVideosDate } from "../database/upsert-last-store-all-videos-date";
 import { upsertVideo } from "../database/upsert-video.js";
 import { logger } from "../logger.js";
-import { getChannelAsmrVideos } from "./get-channel-asmr-videos.js";
-import { getChannelUploadPlaylistId } from "./get-channel-upload-playlist-id.js";
+import { getAsmrVideosInPlaylist } from "./get-asmr-videos-in-playlist.js";
 import { videoApiResponseToDbColumns } from "./video-api-response-to-db-columns.js";
 
 export const storeAllVideoDetails = async (channels) => {
   for (const channel of channels) {
-    logger.info(channel.channelTitle);
+    logger.info(channel.channel_title);
 
     const videos = videoApiResponseToDbColumns(
-      await getAllChannelVideos(await getChannelUploadPlaylistId(channel.channelId))
+      await getAllPlaylistAsmrVideos(channel.upload_playlist_id)
     );
 
     logger.info(`Found ${videos.length} videos`);
 
-    await deleteVideosByChannelId(channel.channelId); // Clean up old videos in case any were made private
+    await deleteVideosByChannelId(channel.channel_id); // Clean up old videos in case any were made private
     for (const video of videos) await upsertVideo(video); // Insert all identified videos
     logger.info("-------------------------------------------------------------------");
   }
@@ -24,12 +23,12 @@ export const storeAllVideoDetails = async (channels) => {
   await upsertLastStoreAllVideosDate(new Date());
 };
 
-const getAllChannelVideos = async (
+const getAllPlaylistAsmrVideos = async (
   channelUploadsPlaylistId,
   nextPageToken = null,
   previousVideos = []
 ) => {
-  const { videos, nextPageToken: newNextPageToken } = await getChannelAsmrVideos(
+  const { videos, nextPageToken: newNextPageToken } = await getAsmrVideosInPlaylist(
     channelUploadsPlaylistId,
     nextPageToken
   );
@@ -38,5 +37,5 @@ const getAllChannelVideos = async (
   if (!newNextPageToken) return allVideos;
 
   // Search again with next page token if one is available
-  return getAllChannelVideos(channelUploadsPlaylistId, newNextPageToken, allVideos);
+  return getAllPlaylistAsmrVideos(channelUploadsPlaylistId, newNextPageToken, allVideos);
 };

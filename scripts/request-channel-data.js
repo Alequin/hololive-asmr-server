@@ -1,15 +1,15 @@
 import { getEnvironmentVariables } from "../src/config/config";
 import * as database from "../src/database/database";
-import { selectAllChannels } from "../src/database/select-all-channels";
-import { storeAllVideoDetails } from "../src/store-video-details/store-all-video-details";
+import { readChannelIds } from "../src/read-channel-ids";
+import { storeChannelDetails } from "../src/store-channel-details/store-channel-details";
 import { runScript } from "./run-script";
 
 if (require.main === module) {
-  runScript("requestVideoData", async () => {
+  runScript("requestChannelData", async () => {
     const environment = getEnvironmentVariables();
     await database.connect(environment.databaseName);
 
-    await storeAllVideoDetails(await selectAllChannels());
+    await storeChannelDetails(readChannelIds());
 
     await database.disconnect();
   });

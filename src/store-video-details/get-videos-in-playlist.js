@@ -1,6 +1,6 @@
 import { getEnvironmentVariables } from "../config/config";
 import { getJson } from "../http-requests/get-json";
-import { removeNilValuesFromObject } from "./remove-nil-values-from-object";
+import { removeNilValuesFromObject } from "../remove-nil-values-from-object";
 
 const { youtubeApiKey } = getEnvironmentVariables();
 const PLAYLIST_ITEMS_URL = "https://www.googleapis.com/youtube/v3/playlistItems";
