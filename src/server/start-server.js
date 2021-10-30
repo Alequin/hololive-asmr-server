@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { readChannelIds } from "../read-channel-ids.js";
 import { isAuthTokenValid } from "./is-auto-token-valid.js";
 import * as videos from "./routes/get/videos.js";
+import { newVideoCache } from "./video-cache.js";
 import { watchForNewVideos } from "./watch-for-new-videos";
 
 export const startServer = async ({ port }) =>
@@ -22,9 +23,12 @@ export const startServer = async ({ port }) =>
 
     app.get("/_health", async (_req, res) => res.send("👍"));
 
-    app.get(videos.path, videos.getVideos());
+    const videoCache = newVideoCache();
+    await videoCache.update();
 
-    watchForNewVideos(readChannelIds());
+    app.get(videos.path, videos.getVideos(videoCache));
+
+    watchForNewVideos(readChannelIds(), videoCache);
 
     const server = app.listen(port, () => {
       let hasClosed = false;

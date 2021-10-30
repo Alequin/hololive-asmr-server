@@ -3,25 +3,27 @@ import { selectLastStoreAllVideosDate } from "../database/select-last-store-all-
 import { selectLastStoreChannelsDate } from "../database/select-last-store-channels-date";
 import { selectLastStoreRecentVideosDate } from "../database/select-last-store-recent-videos-date";
 import { logger } from "../logger";
-import { readChannelIds } from "../read-channel-ids.js";
 import { storeChannelDetails } from "../store-channel-details/store-channel-details";
 import { storeAllVideoDetails } from "../store-video-details/store-all-video-details";
 import { storeRecentVideoDetails } from "../store-video-details/store-recent-video-details";
 
 const ONE_HOUR = 1000 * 60 * 60;
 
-export const watchForNewVideos = async (rawChannelDetails) => {
-  await attemptToFindNewVideos(rawChannelDetails);
-  setInterval(() => attemptToFindNewVideos(rawChannelDetails), ONE_HOUR);
+export const watchForNewVideos = async (rawChannelDetails, videoCache) => {
+  await attemptToFindNewVideos(rawChannelDetails, videoCache);
+  setInterval(() => attemptToFindNewVideos(rawChannelDetails, videoCache), ONE_HOUR);
 };
 
-export const attemptToFindNewVideos = async (rawChannelDetails) => {
+export const attemptToFindNewVideos = async (rawChannelDetails, videoCache) => {
   try {
     const nextFetchTime = Date.now();
 
-    if (await fetchAllDetailsIfRequired(rawChannelDetails, nextFetchTime)) return;
-    if (await fetchAllVideoDetailsIfRequired(nextFetchTime)) return;
-    await fetchRecentVideoDetailsIfRequired(nextFetchTime);
+    const shouldUpdateCache =
+      (await fetchAllDetailsIfRequired(rawChannelDetails, nextFetchTime)) ||
+      (await fetchAllVideoDetailsIfRequired(nextFetchTime)) ||
+      (await fetchRecentVideoDetailsIfRequired(nextFetchTime));
+
+    if (shouldUpdateCache) await videoCache.update();
   } catch (error) {
     // Do not throw. Let the system try again on the next loop
     logger.error(error);
