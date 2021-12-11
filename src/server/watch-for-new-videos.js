@@ -39,7 +39,7 @@ const fetchChannelDetailsIfRequired = async (rawChannelDetails, nextFetchTime) =
   const timeTillNextFullChannelRequest =
     lastFullChannelRequest && timePlusOneWeek(lastFullChannelRequest.getTime()) - nextFetchTime;
 
-  if (!hasTimeRunOut(timeTillNextFullChannelRequest)) return false;
+  if (lastFullChannelRequest && !hasTimeRunOut(timeTillNextFullChannelRequest)) return false;
 
   await storeChannelDetails(rawChannelDetails);
   return true;
@@ -50,7 +50,7 @@ const fetchAllVideoDetailsIfRequired = async (nextFetchTime) => {
   const timeTillNextFullVideoRequest =
     lastFullVideoRequest && timePlusOneWeek(lastFullVideoRequest.getTime()) - nextFetchTime;
 
-  if (!hasTimeRunOut(timeTillNextFullVideoRequest)) return false;
+  if (lastFullVideoRequest && !hasTimeRunOut(timeTillNextFullVideoRequest)) return false;
 
   await storeAllVideoDetails(await selectAllChannels());
   return true;
@@ -66,7 +66,7 @@ const fetchRecentVideoDetailsIfRequired = async (nextFetchTime) => {
   const timeTillNextRecentVideoRequest =
     lastRecentVideoRequest && timePlusOneHour(lastRecentVideoRequest.getTime()) - nextFetchTime;
 
-  if (!hasTimeRunOut(timeTillNextRecentVideoRequest)) return false;
+  if (lastRecentVideoRequest && !hasTimeRunOut(timeTillNextRecentVideoRequest)) return false;
 
   await storeRecentVideoDetails(await selectAllChannels());
   return true;

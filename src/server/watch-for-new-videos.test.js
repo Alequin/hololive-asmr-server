@@ -53,6 +53,152 @@ describe("watch-for-new-videos", () => {
   const oneHourAndOneSecond = 1000 * 60 * 60 + 1000;
   const mockVideoCache = { update: jest.fn() };
 
+  it("stores all channels if it has never happened before", async () => {
+    await upsertLastStoreAllVideosDate(new Date());
+    await upsertLastStoreRecentVideosDate(new Date());
+
+    mockYoutubeChannelDetails(channel.channelId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            id: channel.channelId,
+            snippet: {
+              title: channel.channelTitle,
+              thumbnails: {
+                medium: {
+                  url: mockThumbnail,
+                },
+              },
+            },
+            contentDetails: {
+              relatedPlaylists: {
+                uploads: mockPlaylistId,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "4oSpgjVH_kI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await attemptToFindNewVideos([channel]);
+
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(1);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
+  });
+
+  it("stores all videos if the last time it tried was a week ago", async () => {
+    await upsertChannel({
+      channelTitle: channel.channelTitle,
+      channelId: channel.channelId,
+      uploadPlaylistId: mockPlaylistId,
+      thumbnailUrl: "mock-thumbnail",
+    });
+
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreRecentVideosDate(new Date());
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "4oSpgjVH_kI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await attemptToFindNewVideos([channel]);
+
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(0);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
+  });
+
+  it("finds recent videos when the last time it tried as over an hour ago", async () => {
+    await upsertChannel({
+      channelTitle: channel.channelTitle,
+      channelId: channel.channelId,
+      uploadPlaylistId: mockPlaylistId,
+      thumbnailUrl: "mock-thumbnail",
+    });
+
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreAllVideosDate(new Date());
+
+    mockYoutubeVideosInPlaylist(mockPlaylistId, {
+      responseStatus: 200,
+      response: {
+        items: [
+          {
+            snippet: {
+              publishedAt: "2021-06-25T16:53:29Z",
+              channelId: channel.channelId,
+              title:
+                "【ASMR】深夜のバイノーラルマイク雑談💜 / Healing whispering【猫又おかゆ/ホロライブ】",
+              thumbnails: {
+                medium: {
+                  url: "https://i.ytimg.com/vi/4oSpgjVH_kI/mqdefault.jpg",
+                },
+              },
+              channelTitle: "Tsukumo Sana Ch. hololive-EN",
+              resourceId: {
+                videoId: "4oSpgjVH_kI",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await attemptToFindNewVideos([channel]);
+
+    expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(0);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
+    expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(1);
+  });
+
   it("stores all channels if the last time it tried was a week ago", async () => {
     await upsertLastStoreChannelDetails(new Date(Date.now() - oneWeekAndOneSecond));
     await upsertLastStoreAllVideosDate(new Date());
