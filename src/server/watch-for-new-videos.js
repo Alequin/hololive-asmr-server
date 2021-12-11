@@ -18,19 +18,23 @@ export const attemptToFindNewVideos = async (rawChannelDetails, videoCache) => {
   try {
     const nextFetchTime = Date.now();
 
-    const shouldUpdateCache =
-      (await fetchAllDetailsIfRequired(rawChannelDetails, nextFetchTime)) ||
-      (await fetchAllVideoDetailsIfRequired(nextFetchTime)) ||
-      (await fetchRecentVideoDetailsIfRequired(nextFetchTime));
+    const hasUpdatedChannels = await fetchChannelDetailsIfRequired(
+      rawChannelDetails,
+      nextFetchTime
+    );
+    const hasUpdatedAllVideos = await fetchAllVideoDetailsIfRequired(nextFetchTime);
+    const hasUpdatedRecentVideos =
+      !hasUpdatedAllVideos && (await fetchRecentVideoDetailsIfRequired(nextFetchTime));
 
-    if (shouldUpdateCache) await videoCache.update();
+    if (hasUpdatedChannels || hasUpdatedAllVideos || hasUpdatedRecentVideos)
+      await videoCache.update();
   } catch (error) {
     // Do not throw. Let the system try again on the next loop
     logger.error(error);
   }
 };
 
-const fetchAllDetailsIfRequired = async (rawChannelDetails, nextFetchTime) => {
+const fetchChannelDetailsIfRequired = async (rawChannelDetails, nextFetchTime) => {
   const lastFullChannelRequest = await selectLastStoreChannelsDate();
   const timeTillNextFullChannelRequest =
     lastFullChannelRequest && timePlusOneWeek(lastFullChannelRequest.getTime()) - nextFetchTime;
@@ -38,7 +42,6 @@ const fetchAllDetailsIfRequired = async (rawChannelDetails, nextFetchTime) => {
   if (!hasTimeRunOut(timeTillNextFullChannelRequest)) return false;
 
   await storeChannelDetails(rawChannelDetails);
-  await storeAllVideoDetails(await selectAllChannels());
   return true;
 };
 

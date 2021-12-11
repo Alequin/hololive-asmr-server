@@ -16,7 +16,7 @@ import { attemptToFindNewVideos } from "./watch-for-new-videos";
 
 const { databaseName } = getEnvironmentVariables();
 
-describe("attempt-to-find-new-videos", () => {
+describe("watch-for-new-videos", () => {
   beforeAll(async () => {
     await setupDatabase();
   });
@@ -53,7 +53,7 @@ describe("attempt-to-find-new-videos", () => {
   const oneHourAndOneSecond = 1000 * 60 * 60 + 1000;
   const mockVideoCache = { update: jest.fn() };
 
-  it("stores all channels and video if the last time it tried was a week ago", async () => {
+  it("stores all channels if the last time it tried was a week ago", async () => {
     await upsertLastStoreChannelDetails(new Date(Date.now() - oneWeekAndOneSecond));
     await upsertLastStoreAllVideosDate(new Date());
     await upsertLastStoreRecentVideosDate(new Date());
@@ -110,7 +110,7 @@ describe("attempt-to-find-new-videos", () => {
     await attemptToFindNewVideos([channel]);
 
     expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(1);
-    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
     expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
   });
 
@@ -447,7 +447,7 @@ describe("attempt-to-find-new-videos", () => {
     });
   });
 
-  it("updates the video cache when all channels and video are updated", async () => {
+  it("updates the video cache when all channels are updated", async () => {
     await upsertLastStoreChannelDetails(new Date(Date.now() - oneWeekAndOneSecond));
     await upsertLastStoreAllVideosDate(new Date());
     await upsertLastStoreRecentVideosDate(new Date());
@@ -505,7 +505,7 @@ describe("attempt-to-find-new-videos", () => {
 
     // Confirm both channel and video details were stored
     expect(storeChannelDetails.storeChannelDetails).toHaveBeenCalledTimes(1);
-    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(1);
+    expect(storeAllVideoDetails.storeAllVideoDetails).toHaveBeenCalledTimes(0);
     expect(storeRecentVideoDetails.storeRecentVideoDetails).toHaveBeenCalledTimes(0);
 
     // Confirm update was called on the cache
