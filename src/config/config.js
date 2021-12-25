@@ -1,6 +1,7 @@
+import assert from "assert";
 import { doesJsonFileExist, readJsonFile } from "../read-json-file.js";
-import { validEnvironmentOptions } from "./valid-environment-options.js";
 import { currentDatabaseName } from "./current-database-name.js";
+import { validEnvironmentOptions } from "./valid-environment-options.js";
 
 export const getEnvironmentVariables = () => ({
   port: process.env.PORT || 3000,
@@ -9,12 +10,14 @@ export const getEnvironmentVariables = () => ({
   ...secretEnvironmentVariables,
 });
 
-const currentEnvironment = process.env.NODE_ENV || validEnvironmentOptions.local;
+const currentEnvironment =
+  process.env.NODE_ENV || validEnvironmentOptions.local;
 
 const environmentCheckers = {
   isEnvTest: () => currentEnvironment === validEnvironmentOptions.test,
   isEnvLocal: () => currentEnvironment === validEnvironmentOptions.local,
-  isEnvProduction: () => currentEnvironment === validEnvironmentOptions.production,
+  isEnvProduction: () =>
+    currentEnvironment === validEnvironmentOptions.production,
 };
 
 const localSecrets = doesJsonFileExist("./secrets.json")
@@ -27,3 +30,17 @@ const secretEnvironmentVariables = {
   serverAuthToken: process.env.AUTH_TOKEN,
   ...localSecrets,
 };
+
+assert(
+  secretEnvironmentVariables.youtubeApiKey,
+  "Error: no youtube API key has been provided in config.js"
+);
+assert(
+  secretEnvironmentVariables.serverAuthToken,
+  "Error: no server auth token has been provided in config.js"
+);
+if (environmentCheckers.isEnvProduction())
+  assert(
+    secretEnvironmentVariables.connectionString,
+    "Error: no database connection string has been provided in config.js"
+  );
