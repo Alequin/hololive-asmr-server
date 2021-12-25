@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { readChannelIds } from "../read-channel-ids.js";
 import { isAuthTokenValid } from "./is-auto-token-valid.js";
 import * as videos from "./routes/get/videos.js";
+import * as channels from "./routes/get/channels";
 import { newVideoCache } from "./video-cache.js";
 import { watchForNewVideos } from "./watch-for-new-videos";
 
@@ -27,6 +28,7 @@ export const startServer = async ({ port }) =>
     await videoCache.update();
 
     app.get(videos.path, videos.getVideos(videoCache));
+    app.get(channels.path, channels.getChannels(videoCache));
 
     watchForNewVideos(readChannelIds(), videoCache);
 

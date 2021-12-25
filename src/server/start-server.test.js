@@ -1,3 +1,5 @@
+jest.mock("./watch-for-new-videos");
+
 import { isArray } from "lodash";
 import fetch from "node-fetch";
 import { setupDatabase } from "../../scripts/setup-database.js";
@@ -6,15 +8,21 @@ import * as database from "../database/database";
 import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database-tables";
 import { seedDatabase } from "../database/maintenance/seed-database.js";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
+import * as selectAllVideosWithChannelDetails from "../database/select-all-videos-with-channel-details";
 import { startServer } from "./start-server.js";
 import * as videoCache from "./video-cache.js";
-import * as selectAllVideosWithChannelDetails from "../database/select-all-videos-with-channel-details";
+import * as watchForNewVideos from "./watch-for-new-videos";
 
 const environment = getEnvironmentVariables();
 
 describe("start server", () => {
   const testPort = 3002;
   let server = null;
+
+  const channel = {
+    channelTitle: "Tsukumo Sana Ch. hololive-EN",
+    channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
+  };
 
   beforeAll(async () => {
     await setupDatabase();
@@ -23,7 +31,11 @@ describe("start server", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     jest.spyOn(videoCache, "newVideoCache");
-    jest.spyOn(selectAllVideosWithChannelDetails, "selectAllVideosWithChannelDetails");
+    jest.spyOn(watchForNewVideos, "watchForNewVideos");
+    jest.spyOn(
+      selectAllVideosWithChannelDetails,
+      "selectAllVideosWithChannelDetails"
+    );
 
     await database.connect(environment.databaseName);
     await truncateDatabase();
@@ -60,6 +72,21 @@ describe("start server", () => {
       expect(typeof video.channel_thumbnail_url).toBe("string");
     });
   });
+
+  it("Provides an API to request all the youtube channels", async () => {
+    const response = await fetch(`http://localhost:${testPort}/channels`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
+
+    const channels = await response.json();
+
+    expect(isArray(channels)).toBe(true);
+    channels.forEach((channel) => {
+      expect(typeof channel.channel_title).toBe("string");
+      expect(typeof channel.channel_thumbnail_url).toBe("string");
+    });
+  });
+
   it("Makes a call to prepare the videos in cache on server startup", () => {
     // Make a call to create a new cache
     expect(videoCache.newVideoCache).toHaveBeenCalledTimes(1);
@@ -68,5 +95,9 @@ describe("start server", () => {
     expect(
       selectAllVideosWithChannelDetails.selectAllVideosWithChannelDetails
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it("Makes a call to start watching for updated videos", () => {
+    expect(watchForNewVideos.watchForNewVideos).toHaveBeenCalledTimes(1);
   });
 });
