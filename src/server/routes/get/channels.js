@@ -1,4 +1,4 @@
-import { uniqBy } from "lodash";
+import { orderBy, uniqBy } from "lodash";
 import { logger } from "../../../logger.js";
 
 export const path = "/channels";
@@ -26,10 +26,13 @@ export const getChannels = (videoCache) => {
   };
 };
 
-const getChannelsFromVideos = (videos) =>
-  uniqBy(videos, "channel_title").map(
+const getChannelsFromVideos = (videos) => {
+  const channles = uniqBy(videos, "channel_title").map(
     ({ channel_thumbnail_url, channel_title }) => ({
       channel_title,
       channel_thumbnail_url,
     })
   );
+
+  return orderBy(channles, "channel_title");
+};

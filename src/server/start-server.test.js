@@ -1,6 +1,6 @@
 jest.mock("./watch-for-new-videos");
 
-import { isArray } from "lodash";
+import { isArray, orderBy } from "lodash";
 import fetch from "node-fetch";
 import waitForExpect from "wait-for-expect";
 import { setupDatabase } from "../../scripts/setup-database.js";
@@ -84,6 +84,117 @@ describe("start server", () => {
       });
     });
 
+    it("returns only the videos with the channel ids gived in the query string", async () => {
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(
+        `http://localhost:${testPort}/videos?channelIds=UCvInZx9h3jC2JzsIzoOebWg,UCUKD-uaobj9jiqB-VXt71mA,UCoSrY_IQQVpmIRZ9Xf-y93g`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const videos = await response.json();
+
+      expect(isArray(videos)).toBe(true);
+      videos.forEach((video) => {
+        expect(
+          [
+            "UCvInZx9h3jC2JzsIzoOebWg",
+            "UCUKD-uaobj9jiqB-VXt71mA",
+            "UCoSrY_IQQVpmIRZ9Xf-y93g",
+          ].includes(video.channel_id)
+        ).toBe(true);
+      });
+    });
+
+    it("returns videos ordered by the requested key", async () => {
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(
+        `http://localhost:${testPort}/videos?orderByKey=published_at`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const videos = await response.json();
+
+      const orderedVideos = orderBy(videos, "published_at");
+      expect(videos).toEqual(orderedVideos);
+    });
+
+    it("returns the videos in the requested order", async () => {
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(
+        `http://localhost:${testPort}/videos?orderByKey=published_at&orderDirection=desc`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const videos = await response.json();
+
+      const orderedVideos = orderBy(videos, "published_at", "desc");
+      expect(videos).toEqual(orderedVideos);
+    });
+
+    it("returns the requested number of videos", async () => {
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(
+        `http://localhost:${testPort}/videos?max=20`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const videos = await response.json();
+      expect(videos.length).toBe(20);
+    });
+
+    it("returns vidoes offset by the requested number", async () => {
+      server = await startServer({ port: testPort });
+
+      // Make a request for the top 20
+      const top20Response = await fetch(
+        `http://localhost:${testPort}/videos?max=20`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const top20videos = await top20Response.json();
+
+      // Make a request for the next 20
+      const next20Response = await fetch(
+        `http://localhost:${testPort}/videos?max=20&offset=20`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const next20videos = await next20Response.json();
+
+      // Make a request for the top 40
+      const top40Response = await fetch(
+        `http://localhost:${testPort}/videos?max=40`,
+        {
+          headers: { authToken: environment.serverAuthToken },
+        }
+      );
+
+      const top40videos = await top40Response.json();
+
+      // Confirm the first two request return the same as fetching the top 40
+
+      expect([...top20videos, ...next20videos].length).toEqual(
+        top40videos.length
+      );
+      expect([...top20videos, ...next20videos]).toEqual(top40videos);
+    });
+
     it("returns the expected status code if there is an issue requesting videos", async () => {
       jest
         .spyOn(
@@ -119,6 +230,19 @@ describe("start server", () => {
         expect(typeof channel.channel_title).toBe("string");
         expect(typeof channel.channel_thumbnail_url).toBe("string");
       });
+    });
+
+    it("returns channels in ascending title order", async () => {
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      const channels = await response.json();
+
+      const orderedChannels = orderBy(channels, "channel_title");
+      expect(orderedChannels).toEqual(channels);
     });
 
     it("does not use the video cache to get youtube channels if the cache has not updated since the last time a call was made", async () => {
