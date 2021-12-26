@@ -1,20 +1,11 @@
 import { uniqBy } from "lodash";
-import { logger } from "../../../logger.js";
 
 export const path = "/channels";
 
 export const getChannels = (videoCache) => {
   return async (_req, res) => {
-    try {
-      const channels = getChannelsFromVideos(videoCache.get());
-      res.json(channels);
-    } catch (error) {
-      const message = "Unable to complete request for videos";
-      logger.error(`${message} / Error: ${error.message}`);
-
-      res.status(500);
-      res.send(message);
-    }
+    const channels = getChannelsFromVideos(videoCache.get());
+    res.json(channels);
   };
 };
 
