@@ -2,6 +2,7 @@ jest.mock("./watch-for-new-videos");
 
 import { isArray } from "lodash";
 import fetch from "node-fetch";
+import waitForExpect from "wait-for-expect";
 import { setupDatabase } from "../../scripts/setup-database.js";
 import { getEnvironmentVariables } from "../config/config.js";
 import * as database from "../database/database";
@@ -9,6 +10,9 @@ import { dropAllDatabaseTables } from "../database/maintenance/drop-all-database
 import { seedDatabase } from "../database/maintenance/seed-database.js";
 import { truncateDatabase } from "../database/maintenance/truncate-database.js";
 import * as selectAllVideosWithChannelDetails from "../database/select-all-videos-with-channel-details";
+import { upsertLastStoreAllVideosDate } from "../database/upsert-last-store-all-videos-date.js";
+import { upsertLastStoreChannelDetails } from "../database/upsert-last-store-channel-details.js";
+import { upsertLastStoreRecentVideosDate } from "../database/upsert-last-store-recent-videos-date.js";
 import { startServer } from "./start-server.js";
 import * as videoCache from "./video-cache.js";
 import * as watchForNewVideos from "./watch-for-new-videos";
@@ -19,16 +23,12 @@ describe("start server", () => {
   const testPort = 3002;
   let server = null;
 
-  const channel = {
-    channelTitle: "Tsukumo Sana Ch. hololive-EN",
-    channelId: "UCsUj0dszADCGbF3gNrQEuSQ",
-  };
-
   beforeAll(async () => {
     await setupDatabase();
   });
 
   beforeEach(async () => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     jest.spyOn(videoCache, "newVideoCache");
     jest.spyOn(watchForNewVideos, "watchForNewVideos");
@@ -40,11 +40,16 @@ describe("start server", () => {
     await database.connect(environment.databaseName);
     await truncateDatabase();
     await seedDatabase();
-    server = await startServer({ port: testPort });
+
+    // Fake recent updates of fetched data to stop test from actaully fetching
+    await upsertLastStoreChannelDetails(new Date());
+    await upsertLastStoreAllVideosDate(new Date());
+    await upsertLastStoreRecentVideosDate(new Date());
   });
 
   afterEach(async () => {
-    await server.closeServer();
+    await server?.closeServer();
+    server = null;
     await database.disconnect();
   });
 
@@ -55,6 +60,8 @@ describe("start server", () => {
   });
 
   it("Provides an API to request asmr videos", async () => {
+    server = await startServer({ port: testPort });
+
     const response = await fetch(`http://localhost:${testPort}/videos`, {
       headers: { authToken: environment.serverAuthToken },
     });
@@ -73,7 +80,28 @@ describe("start server", () => {
     });
   });
 
+  it("returns the expected status code if there is an issue requesting videos", async () => {
+    jest
+      .spyOn(
+        selectAllVideosWithChannelDetails,
+        "selectAllVideosWithChannelDetails"
+      )
+      .mockImplementation(() => {
+        throw "error selectAllVideosWithChannelDetails";
+      });
+
+    server = await startServer({ port: testPort });
+
+    const response = await fetch(`http://localhost:${testPort}/videos`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("Provides an API to request all the youtube channels", async () => {
+    server = await startServer({ port: testPort });
+
     const response = await fetch(`http://localhost:${testPort}/channels`, {
       headers: { authToken: environment.serverAuthToken },
     });
@@ -87,7 +115,28 @@ describe("start server", () => {
     });
   });
 
-  it("Makes a call to prepare the videos in cache on server startup", () => {
+  it("returns the expected status code if there is an issue requesting youtube channels", async () => {
+    jest
+      .spyOn(
+        selectAllVideosWithChannelDetails,
+        "selectAllVideosWithChannelDetails"
+      )
+      .mockImplementation(() => {
+        throw "error selectAllVideosWithChannelDetails";
+      });
+
+    server = await startServer({ port: testPort });
+
+    const response = await fetch(`http://localhost:${testPort}/channels`, {
+      headers: { authToken: environment.serverAuthToken },
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("prepares the videos in cache on server startup", async () => {
+    server = await startServer({ port: testPort });
+
     // Make a call to create a new cache
     expect(videoCache.newVideoCache).toHaveBeenCalledTimes(1);
 
@@ -97,7 +146,9 @@ describe("start server", () => {
     ).toHaveBeenCalledTimes(1);
   });
 
-  it("Makes a call to start watching for updated videos", () => {
+  it("starts watching for updated videos on server startup", async () => {
+    server = await startServer({ port: testPort });
+
     expect(watchForNewVideos.watchForNewVideos).toHaveBeenCalledTimes(1);
   });
 });
