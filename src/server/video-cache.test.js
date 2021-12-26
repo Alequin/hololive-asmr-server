@@ -16,6 +16,7 @@ describe("video cache", () => {
   });
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     await database.connect(databaseName);
     await truncateDatabase();
     await seedDatabase();
@@ -36,11 +37,55 @@ describe("video cache", () => {
 
     expect(typeof cache.get).toBe("function");
     expect(typeof cache.update).toBe("function");
-    expect(size(cache)).toBe(2);
+    expect(typeof cache.lastUpdateTime).toBe("function");
+    expect(size(cache)).toBe(3);
   });
 
-  it("has no data in the cache on creation", () => {
-    expect(newVideoCache().get()).toEqual([]);
+  it("has no last updated date on creation", () => {
+    expect(newVideoCache().lastUpdateTime()).toBe(null);
+  });
+
+  it("populates the cache when getting the data from cache but there is nothing available", async () => {
+    const selectVideosSpy = jest.spyOn(
+      selectAllVideosWithChannelDetails,
+      "selectAllVideosWithChannelDetails"
+    );
+
+    const cache = newVideoCache();
+
+    // Call get to populate cache and confirm a db call is made to get videos when update is called
+    expect(selectVideosSpy).toHaveBeenCalledTimes(0);
+    const oneSecondBeforeUpdate = Date.now() - 1000;
+    const cachedVideos = await cache.get();
+    const oneSecondAfterUpdate = Date.now() + 1000;
+    expect(selectVideosSpy).toHaveBeenCalledTimes(1);
+
+    // Confirm the cache is populated
+    expect(Array.isArray(cachedVideos)).toBe(true);
+    expect(cachedVideos.length).toBeGreaterThan(0);
+
+    // Confirm the lastUpdateTime has been set
+    const lastUpdateTime = cache.lastUpdateTime();
+    expect(lastUpdateTime).toBeGreaterThan(oneSecondBeforeUpdate);
+    expect(lastUpdateTime).toBeLessThan(oneSecondAfterUpdate);
+  });
+
+  it("returns the cached data without making another db call when get is called a second time", async () => {
+    const selectVideosSpy = jest.spyOn(
+      selectAllVideosWithChannelDetails,
+      "selectAllVideosWithChannelDetails"
+    );
+
+    const cache = newVideoCache();
+
+    // Confirm a db call is made to populate cache
+    expect(selectVideosSpy).toHaveBeenCalledTimes(0);
+    await cache.get();
+    expect(selectVideosSpy).toHaveBeenCalledTimes(1);
+
+    // Confirm no db call is made the second time cache is accessed
+    await cache.get();
+    expect(selectVideosSpy).toHaveBeenCalledTimes(1);
   });
 
   it("populates the cache when update is called", async () => {
@@ -51,16 +96,63 @@ describe("video cache", () => {
 
     const cache = newVideoCache();
 
-    expect(cache.get()).toEqual([]);
-
     // Confirm a db call is made to get videos when update is called
     expect(selectVideosSpy).toHaveBeenCalledTimes(0);
+    const oneSecondBeforeUpdate = Date.now() - 1000;
     await cache.update();
+    const oneSecondAfterUpdate = Date.now() + 1000;
     expect(selectVideosSpy).toHaveBeenCalledTimes(1);
 
     // Confirm the cache is populated
-    const cachedVideos = cache.get();
+    const cachedVideos = await cache.get();
     expect(Array.isArray(cachedVideos)).toBe(true);
     expect(cachedVideos.length).toBeGreaterThan(0);
+
+    // Confirm the lastUpdateTime has been set
+    const lastUpdateTime = cache.lastUpdateTime();
+    expect(lastUpdateTime).toBeGreaterThan(oneSecondBeforeUpdate);
+    expect(lastUpdateTime).toBeLessThan(oneSecondAfterUpdate);
+  });
+
+  it("updates the lastUpdateTime when update is called multiple times", async () => {
+    const cache = newVideoCache();
+
+    await cache.update();
+    const firstUpdateTime = cache.lastUpdateTime();
+
+    await cache.update();
+    const secondUpdateTime = cache.lastUpdateTime();
+
+    expect(secondUpdateTime).toBeGreaterThan(firstUpdateTime);
+  });
+
+  it("throws an error if there is an issue while requesting cached data", async () => {
+    const selectVideosSpy = jest.spyOn(
+      selectAllVideosWithChannelDetails,
+      "selectAllVideosWithChannelDetails"
+    );
+
+    const cache = newVideoCache();
+
+    selectVideosSpy.mockImplementation(() => {
+      throw "error selectVideosSpy";
+    });
+
+    expect(cache.get()).rejects.toBe("error selectVideosSpy");
+  });
+
+  it("does not throw an error if there is an issue while updating cached data", async () => {
+    const selectVideosSpy = jest.spyOn(
+      selectAllVideosWithChannelDetails,
+      "selectAllVideosWithChannelDetails"
+    );
+
+    const cache = newVideoCache();
+
+    selectVideosSpy.mockImplementation(() => {
+      throw "error selectVideosSpy";
+    });
+
+    expect(cache.update()).resolves.toBe(undefined);
   });
 });

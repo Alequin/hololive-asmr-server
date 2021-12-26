@@ -4,6 +4,6 @@ export const path = "/videos";
 
 export const getVideos = (videoCache) => {
   return async (_req, res) => {
-    res.json(videoCache.get());
+    res.json(await videoCache.get());
   };
 };

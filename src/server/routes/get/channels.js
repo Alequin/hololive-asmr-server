@@ -4,7 +4,7 @@ export const path = "/channels";
 
 export const getChannels = (videoCache) => {
   return async (_req, res) => {
-    const channels = getChannelsFromVideos(videoCache.get());
+    const channels = getChannelsFromVideos(await videoCache.get());
     res.json(channels);
   };
 };
