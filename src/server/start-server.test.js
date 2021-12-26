@@ -227,7 +227,8 @@ describe("start server", () => {
 
       expect(isArray(channels)).toBe(true);
       channels.forEach((channel) => {
-        expect(typeof channel.channel_title).toBe("string");
+        expect(typeof channel.channel_id).toBe("string");
+        expect(typeof channel.channel_thumbnail_url).toBe("string");
         expect(typeof channel.channel_thumbnail_url).toBe("string");
       });
     });

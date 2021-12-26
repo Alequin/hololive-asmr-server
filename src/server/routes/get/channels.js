@@ -28,7 +28,8 @@ export const getChannels = (videoCache) => {
 
 const getChannelsFromVideos = (videos) => {
   const channles = uniqBy(videos, "channel_title").map(
-    ({ channel_thumbnail_url, channel_title }) => ({
+    ({ channel_id, channel_thumbnail_url, channel_title }) => ({
+      channel_id,
       channel_title,
       channel_thumbnail_url,
     })
