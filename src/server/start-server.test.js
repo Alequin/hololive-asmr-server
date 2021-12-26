@@ -30,7 +30,8 @@ describe("start server", () => {
   beforeEach(async () => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
-    jest.spyOn(videoCache, "newVideoCache");
+    jest.spyOn(videoCache.staticVideoCache, "get");
+    jest.spyOn(videoCache.staticVideoCache, "update");
     jest.spyOn(watchForNewVideos, "watchForNewVideos");
     jest.spyOn(
       selectAllVideosWithChannelDetails,
@@ -45,6 +46,8 @@ describe("start server", () => {
     await upsertLastStoreChannelDetails(new Date());
     await upsertLastStoreAllVideosDate(new Date());
     await upsertLastStoreRecentVideosDate(new Date());
+
+    videoCache.staticVideoCache.reset();
   });
 
   afterEach(async () => {
@@ -59,86 +62,153 @@ describe("start server", () => {
     await database.disconnect();
   });
 
-  it("Provides an API to request asmr videos", async () => {
-    server = await startServer({ port: testPort });
+  describe("get videos", () => {
+    it("Provides an API to request asmr videos", async () => {
+      server = await startServer({ port: testPort });
 
-    const response = await fetch(`http://localhost:${testPort}/videos`, {
-      headers: { authToken: environment.serverAuthToken },
-    });
-
-    const videos = await response.json();
-
-    expect(isArray(videos)).toBe(true);
-    videos.forEach((video) => {
-      expect(typeof video.video_id).toBe("string");
-      expect(typeof video.channel_title).toBe("string");
-      expect(typeof video.video_title).toBe("string");
-      expect(typeof video.channel_id).toBe("string");
-      expect(typeof video.published_at).toBe("string");
-      expect(typeof video.video_thumbnail_url).toBe("string");
-      expect(typeof video.channel_thumbnail_url).toBe("string");
-    });
-  });
-
-  it("returns the expected status code if there is an issue requesting videos", async () => {
-    jest
-      .spyOn(
-        selectAllVideosWithChannelDetails,
-        "selectAllVideosWithChannelDetails"
-      )
-      .mockImplementation(() => {
-        throw "error selectAllVideosWithChannelDetails";
+      const response = await fetch(`http://localhost:${testPort}/videos`, {
+        headers: { authToken: environment.serverAuthToken },
       });
 
-    server = await startServer({ port: testPort });
+      const videos = await response.json();
 
-    const response = await fetch(`http://localhost:${testPort}/videos`, {
-      headers: { authToken: environment.serverAuthToken },
+      expect(isArray(videos)).toBe(true);
+      videos.forEach((video) => {
+        expect(typeof video.video_id).toBe("string");
+        expect(typeof video.channel_title).toBe("string");
+        expect(typeof video.video_title).toBe("string");
+        expect(typeof video.channel_id).toBe("string");
+        expect(typeof video.published_at).toBe("string");
+        expect(typeof video.video_thumbnail_url).toBe("string");
+        expect(typeof video.channel_thumbnail_url).toBe("string");
+      });
     });
 
-    expect(response.status).toBe(500);
-  });
+    it("returns the expected status code if there is an issue requesting videos", async () => {
+      jest
+        .spyOn(
+          selectAllVideosWithChannelDetails,
+          "selectAllVideosWithChannelDetails"
+        )
+        .mockImplementation(() => {
+          throw "error selectAllVideosWithChannelDetails";
+        });
 
-  it("Provides an API to request all the youtube channels", async () => {
-    server = await startServer({ port: testPort });
+      server = await startServer({ port: testPort });
 
-    const response = await fetch(`http://localhost:${testPort}/channels`, {
-      headers: { authToken: environment.serverAuthToken },
-    });
-
-    const channels = await response.json();
-
-    expect(isArray(channels)).toBe(true);
-    channels.forEach((channel) => {
-      expect(typeof channel.channel_title).toBe("string");
-      expect(typeof channel.channel_thumbnail_url).toBe("string");
-    });
-  });
-
-  it("returns the expected status code if there is an issue requesting youtube channels", async () => {
-    jest
-      .spyOn(
-        selectAllVideosWithChannelDetails,
-        "selectAllVideosWithChannelDetails"
-      )
-      .mockImplementation(() => {
-        throw "error selectAllVideosWithChannelDetails";
+      const response = await fetch(`http://localhost:${testPort}/videos`, {
+        headers: { authToken: environment.serverAuthToken },
       });
 
-    server = await startServer({ port: testPort });
+      expect(response.status).toBe(500);
+    });
+  });
 
-    const response = await fetch(`http://localhost:${testPort}/channels`, {
-      headers: { authToken: environment.serverAuthToken },
+  describe("get channels", () => {
+    it("Provides an API to request all the youtube channels", async () => {
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      const channels = await response.json();
+
+      expect(isArray(channels)).toBe(true);
+      channels.forEach((channel) => {
+        expect(typeof channel.channel_title).toBe("string");
+        expect(typeof channel.channel_thumbnail_url).toBe("string");
+      });
     });
 
-    expect(response.status).toBe(500);
+    it("does not use the video cache to get youtube channels if the cache has not updated since the last time a call was made", async () => {
+      server = await startServer({ port: testPort });
+
+      expect(videoCache.staticVideoCache.get).toHaveBeenCalledTimes(0);
+
+      // Make first request
+      await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      // Confirm video cache was used to request channels
+      expect(videoCache.staticVideoCache.get).toHaveBeenCalledTimes(1);
+
+      // Make second request
+      const response = await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      // Confirm video cache was not used the second time
+      expect(videoCache.staticVideoCache.get).toHaveBeenCalledTimes(1);
+
+      // Confirm the response is as expected
+      const channels = await response.json();
+      expect(isArray(channels)).toBe(true);
+      channels.forEach((channel) => {
+        expect(typeof channel.channel_title).toBe("string");
+        expect(typeof channel.channel_thumbnail_url).toBe("string");
+      });
+    });
+
+    it("uses the video cache to get youtube channels if the cache was updated since the last time a call was made", async () => {
+      server = await startServer({ port: testPort });
+
+      expect(videoCache.staticVideoCache.get).toHaveBeenCalledTimes(0);
+
+      // Make first request
+      await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      // Confirm video cache was used to request channels
+      expect(videoCache.staticVideoCache.get).toHaveBeenCalledTimes(1);
+
+      // Update the cache
+      await videoCache.staticVideoCache.update();
+
+      // Make second request
+      const response = await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      // Confirm video cache was used the second time
+      expect(videoCache.staticVideoCache.get).toHaveBeenCalledTimes(2);
+
+      // Confirm the response is as expected
+      const channels = await response.json();
+      expect(isArray(channels)).toBe(true);
+      channels.forEach((channel) => {
+        expect(typeof channel.channel_title).toBe("string");
+        expect(typeof channel.channel_thumbnail_url).toBe("string");
+      });
+    });
+
+    it("returns the expected status code if there is an issue requesting youtube channels", async () => {
+      jest
+        .spyOn(
+          selectAllVideosWithChannelDetails,
+          "selectAllVideosWithChannelDetails"
+        )
+        .mockImplementation(() => {
+          throw "error selectAllVideosWithChannelDetails";
+        });
+
+      server = await startServer({ port: testPort });
+
+      const response = await fetch(`http://localhost:${testPort}/channels`, {
+        headers: { authToken: environment.serverAuthToken },
+      });
+
+      expect(response.status).toBe(500);
+    });
   });
 
   it("prepares the videos in cache on server startup", async () => {
     server = await startServer({ port: testPort });
 
-    // Make a call to create a new cache
-    expect(videoCache.newVideoCache).toHaveBeenCalledTimes(1);
+    // Make a call to populate cache
+    expect(videoCache.staticVideoCache.update).toHaveBeenCalledTimes(1);
 
     // Make a call to fetch all videos while creating the cache
     expect(

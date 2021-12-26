@@ -24,5 +24,11 @@ export const newVideoCache = () => {
       }
     },
     lastUpdateTime: () => lastUpdateTime,
+    reset: () => {
+      cache = null;
+      lastUpdateTime = null;
+    },
   };
 };
+
+export const staticVideoCache = newVideoCache();

@@ -2,9 +2,9 @@ import express from "express";
 import helmet from "helmet";
 import { readChannelIds } from "../read-channel-ids.js";
 import { isAuthTokenValid } from "./is-auto-token-valid.js";
-import * as videos from "./routes/get/videos.js";
 import * as channels from "./routes/get/channels";
-import { newVideoCache } from "./video-cache.js";
+import * as videos from "./routes/get/videos.js";
+import { staticVideoCache } from "./video-cache.js";
 import { watchForNewVideos } from "./watch-for-new-videos";
 
 export const startServer = async ({ port }) =>
@@ -24,13 +24,12 @@ export const startServer = async ({ port }) =>
 
     app.get("/_health", async (_req, res) => res.send("👍"));
 
-    const videoCache = newVideoCache();
-    await videoCache.update();
+    await staticVideoCache.update();
 
-    app.get(videos.path, videos.getVideos(videoCache));
-    app.get(channels.path, channels.getChannels(videoCache));
+    app.get(videos.path, videos.getVideos(staticVideoCache));
+    app.get(channels.path, channels.getChannels(staticVideoCache));
 
-    watchForNewVideos(readChannelIds(), videoCache);
+    watchForNewVideos(readChannelIds(), staticVideoCache);
 
     const server = app.listen(port, () => {
       let hasClosed = false;

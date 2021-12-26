@@ -3,13 +3,19 @@ import { logger } from "../../../logger.js";
 
 export const path = "/channels";
 
-// const cachedChannels
-
 export const getChannels = (videoCache) => {
+  let cachedChannels = null;
+  let lastKnownCacheUpdate = null;
+
   return async (_req, res) => {
     try {
-      const channels = getChannelsFromVideos(await videoCache.get());
-      res.json(channels);
+      const lastCacheUpdate = videoCache.lastUpdateTime();
+      if (cachedChannels && lastKnownCacheUpdate === lastCacheUpdate)
+        return res.json(cachedChannels);
+
+      cachedChannels = getChannelsFromVideos(await videoCache.get());
+      lastKnownCacheUpdate = lastCacheUpdate;
+      return res.json(cachedChannels);
     } catch (error) {
       const message = "Unable to complete request for videos";
       logger.error(`${message} / Error: ${error.message}`);

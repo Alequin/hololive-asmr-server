@@ -16,6 +16,7 @@ describe("video cache", () => {
   });
 
   beforeEach(async () => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     await database.connect(databaseName);
     await truncateDatabase();
@@ -38,7 +39,8 @@ describe("video cache", () => {
     expect(typeof cache.get).toBe("function");
     expect(typeof cache.update).toBe("function");
     expect(typeof cache.lastUpdateTime).toBe("function");
-    expect(size(cache)).toBe(3);
+    expect(typeof cache.reset).toBe("function");
+    expect(size(cache)).toBe(4);
   });
 
   it("has no last updated date on creation", () => {
@@ -154,5 +156,31 @@ describe("video cache", () => {
     });
 
     expect(cache.update()).resolves.toBe(undefined);
+  });
+
+  it("removes data from cache when reset is called", async () => {
+    const selectVideosSpy = jest.spyOn(
+      selectAllVideosWithChannelDetails,
+      "selectAllVideosWithChannelDetails"
+    );
+
+    const cache = newVideoCache();
+
+    // Confirm the cache is populated
+    expect(Array.isArray(await cache.get())).toBe(true);
+    expect(selectVideosSpy).toHaveBeenCalledTimes(1);
+
+    // Confirm the lastUpdateTime has been set
+    expect(cache.lastUpdateTime()).toBeTruthy();
+
+    // Reset cache
+    cache.reset();
+
+    // Confirm lastUpdateTime is null
+    expect(cache.lastUpdateTime()).toBe(null);
+
+    // Request cache data and confirm the database call was made to populate the cache
+    expect(Array.isArray(await cache.get())).toBe(true);
+    expect(selectVideosSpy).toHaveBeenCalledTimes(2);
   });
 });
