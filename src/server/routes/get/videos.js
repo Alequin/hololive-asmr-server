@@ -9,7 +9,7 @@ export const getVideos = (videoCache) => {
       res.json(filterVideos(await videoCache.get(), req.query));
     } catch (error) {
       const message = "Unable to complete request for videos";
-      console.error(`${message} / Error: ${error.message}`);
+      logger.error(`${message} / Error: ${error.message}`);
 
       res.status(500);
       res.send(message);
