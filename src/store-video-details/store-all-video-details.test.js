@@ -222,17 +222,21 @@ describe("store-all-video-details", () => {
     mockYoutubeVideosInPlaylist(channel.upload_playlist_id, {
       responseStatus: 200,
       response: {
-        nextPageToken: "nextPageToken",
+        nextPageToken: "token123",
         items,
       },
     });
 
-    mockYoutubeVideosInPlaylistNextPage(channel.upload_playlist_id, "nextPageToken", {
-      responseStatus: 200,
-      response: {
-        items,
-      },
-    });
+    mockYoutubeVideosInPlaylistNextPage(
+      channel.upload_playlist_id,
+      "token123",
+      {
+        responseStatus: 200,
+        response: {
+          items,
+        },
+      }
+    );
 
     await storeAllVideoDetails([channel]);
 
@@ -290,7 +294,7 @@ describe("store-all-video-details", () => {
     ]);
   });
 
-  it("throws an error if there is an issue fetching the playlist videos", async () => {
+  it("skips the channel if there is an issue fetching the playlist videos", async () => {
     mockYoutubeChannelDetails(channel.channel_id, {
       responseStatus: 200,
       response: {
@@ -311,6 +315,9 @@ describe("store-all-video-details", () => {
       response: null,
     });
 
-    expect(() => storeAllVideoDetails([channel])).rejects.toBeDefined();
+    // Does not store any videos but also does not result in an error
+    await storeAllVideoDetails([channel]);
+    const videos = await selectAllVideos();
+    expect(videos).toHaveLength(0);
   });
 });

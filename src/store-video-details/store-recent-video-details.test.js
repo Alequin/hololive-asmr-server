@@ -8,7 +8,10 @@ import { selectAllVideos } from "../database/select-all-videos";
 import { selectLastStoreRecentVideosDate } from "../database/select-last-store-recent-videos-date";
 import { upsertChannel } from "../database/upsert-channel";
 import { upsertVideo } from "../database/upsert-video";
-import { mockYoutubeChannelDetails, mockYoutubeVideosInPlaylist } from "../test-utils/nock-mocks";
+import {
+  mockYoutubeChannelDetails,
+  mockYoutubeVideosInPlaylist,
+} from "../test-utils/nock-mocks";
 import * as getVideosInPlaylist from "./get-videos-in-playlist";
 import { storeRecentVideoDetails } from "./store-recent-video-details";
 
@@ -284,7 +287,7 @@ describe("store-recent-video-details", () => {
     ]);
   });
 
-  it("throws an error if there is an issue fetching the playlist videos", async () => {
+  it("skips the channel if there is an issue fetching the playlist videos", async () => {
     mockYoutubeChannelDetails(channel.channel_id, {
       responseStatus: 200,
       response: {
@@ -305,6 +308,9 @@ describe("store-recent-video-details", () => {
       response: null,
     });
 
-    expect(() => storeRecentVideoDetails([channel])).rejects.toBeDefined();
+    // Does not store any videos but also does not result in an error
+    await storeRecentVideoDetails([channel]);
+    const videos = await selectAllVideos();
+    expect(videos).toHaveLength(0);
   });
 });
