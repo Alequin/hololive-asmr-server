@@ -87,45 +87,48 @@ describe("store-channel-details", () => {
   });
 
   it("makes an api call and returns multiple items when the requested youtube channels contains multiple ids", async () => {
-    mockYoutubeChannelDetails([sanaChannel.channelId, faunaChannel.channelId].join(","), {
-      responseStatus: 200,
-      response: {
-        items: [
-          {
-            id: sanaChannel.channelId,
-            snippet: {
-              title: sanaChannel.channelTitle,
-              thumbnails: {
-                medium: {
-                  url: mockThumbnail,
+    mockYoutubeChannelDetails(
+      [sanaChannel.channelId, faunaChannel.channelId].join(","),
+      {
+        responseStatus: 200,
+        response: {
+          items: [
+            {
+              id: sanaChannel.channelId,
+              snippet: {
+                title: sanaChannel.channelTitle,
+                thumbnails: {
+                  medium: {
+                    url: mockThumbnail,
+                  },
+                },
+              },
+              contentDetails: {
+                relatedPlaylists: {
+                  uploads: mockPlaylistId,
                 },
               },
             },
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
+            {
+              id: faunaChannel.channelId,
+              snippet: {
+                title: faunaChannel.channelTitle,
+                thumbnails: {
+                  medium: {
+                    url: mockThumbnail,
+                  },
+                },
               },
-            },
-          },
-          {
-            id: faunaChannel.channelId,
-            snippet: {
-              title: faunaChannel.channelTitle,
-              thumbnails: {
-                medium: {
-                  url: mockThumbnail,
+              contentDetails: {
+                relatedPlaylists: {
+                  uploads: mockPlaylistId,
                 },
               },
             },
-            contentDetails: {
-              relatedPlaylists: {
-                uploads: mockPlaylistId,
-              },
-            },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      }
+    );
 
     await storeChannelDetails([sanaChannel, faunaChannel]);
 
@@ -157,7 +160,8 @@ describe("store-channel-details", () => {
       channelId: uniqueId().toString(), // must be a unique value every time
     }));
 
-    const maxRequestChannel = getChannelsDetails.MAX_CHANNELS_DETAILS_REQUEST_COUNT;
+    const maxRequestChannel =
+      getChannelsDetails.MAX_CHANNELS_DETAILS_REQUEST_COUNT;
     const firstChannelsList = allChannels.slice(0, maxRequestChannel);
     const secondChannelsList = allChannels.slice(maxRequestChannel);
 
@@ -192,22 +196,24 @@ describe("store-channel-details", () => {
     mockYoutubeChannelDetails(expectedIdQueryParamForSecond, {
       responseStatus: 200,
       response: {
-        items: secondChannelsList.slice(0, maxRequestChannel).map((channel) => ({
-          id: channel.channelId,
-          snippet: {
-            title: channel.channelTitle,
-            thumbnails: {
-              medium: {
-                url: mockThumbnail,
+        items: secondChannelsList
+          .slice(0, maxRequestChannel)
+          .map((channel) => ({
+            id: channel.channelId,
+            snippet: {
+              title: channel.channelTitle,
+              thumbnails: {
+                medium: {
+                  url: mockThumbnail,
+                },
               },
             },
-          },
-          contentDetails: {
-            relatedPlaylists: {
-              uploads: mockPlaylistId,
+            contentDetails: {
+              relatedPlaylists: {
+                uploads: mockPlaylistId,
+              },
             },
-          },
-        })),
+          })),
       },
     });
 
@@ -263,6 +269,22 @@ describe("store-channel-details", () => {
       response: null,
     });
 
-    expect(async () => storeChannelDetails([sanaChannel])).rejects.toBeDefined();
+    expect(async () =>
+      storeChannelDetails([sanaChannel])
+    ).rejects.toBeDefined();
+  });
+
+  it("does not store any details if the request for channel items return nothing", async () => {
+    mockYoutubeChannelDetails(sanaChannel.channelId, {
+      responseStatus: 200,
+      response: {
+        items: undefined,
+      },
+    });
+
+    await storeChannelDetails([sanaChannel]);
+
+    const channels = await selectAllChannels();
+    expect(channels).toEqual([]);
   });
 });

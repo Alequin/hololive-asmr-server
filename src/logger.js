@@ -5,6 +5,10 @@ export const logger = {
     if (shouldBeSilent()) return;
     console.log(args);
   },
+  warn: (...args) => {
+    if (shouldBeSilent()) return;
+    console.warn(args);
+  },
   error: (...args) => {
     if (shouldBeSilent()) return;
     console.error(args);
